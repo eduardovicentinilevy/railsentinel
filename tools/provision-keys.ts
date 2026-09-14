@@ -60,10 +60,24 @@ for (const n of NODES) {
   privateRecords.push({ src, kid, privateKeyPem, line: n.line, zone: n.zone, section_id: n.section_id, lat: n.lat, lon: n.lon });
 }
 
+// Identidade de assinatura do CCO para o conduite DESCENDENTE.
+// A chave privada fica so no lado do gateway; os dispositivos recebem apenas a
+// publica, para verificar comandos antes de aplicar.
+const cco = generateEd25519();
+const ccoKid = `CCO-SANTOS:${epoch}`;
+
 mkdirSync('.secrets', { recursive: true });
+writeFileSync('.secrets/cco-key.json', JSON.stringify({
+  src: 'cco:santos:CCO-SANTOS', kid: ccoKid, privateKeyPem: cco.privateKeyPem,
+}, null, 2));
+writeFileSync('.secrets/cco-pub.json', JSON.stringify({
+  src: 'cco:santos:CCO-SANTOS', kid: ccoKid, publicKeyPem: cco.publicKeyPem,
+}, null, 2));
 writeFileSync('.secrets/devices.json', JSON.stringify({ devices: publicRecords }, null, 2));
 writeFileSync('.secrets/edge-keys.json', JSON.stringify({ devices: privateRecords }, null, 2));
 
 console.log(`${NODES.length} nos matriculados (epoca de chave ${epoch})`);
 console.log('  .secrets/devices.json    - trust store do gateway (publicas)');
 console.log('  .secrets/edge-keys.json  - chaves dos simuladores (privadas, fora do git)');
+console.log('  .secrets/cco-key.json    - chave de assinatura do CCO (descendente)');
+console.log('  .secrets/cco-pub.json    - publica do CCO, distribuida aos dispositivos');

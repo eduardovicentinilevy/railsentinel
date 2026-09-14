@@ -9,9 +9,11 @@
   },
   "workspaces": [
     "packages/contracts",
+    "packages/plant",
     "services/ingest-gateway",
     "services/ats-core",
-    "services/operator-api"
+    "services/operator-api",
+    "services/ntcip-emulator"
   ],
   "scripts": {
     "build": "tsc --build",
@@ -24,11 +26,16 @@
     "sim": "python3 edge/jetson_sim/edge_node.py",
     "dev": "node --experimental-strip-types tools/dev-all.ts",
     "test": "npm run build && node --test --experimental-strip-types tests/*.test.ts",
-    "fleet": "node --experimental-strip-types tools/fleet-sim.ts"
+    "fleet": "node --experimental-strip-types tools/fleet-sim.ts",
+    "ntcip": "node services/ntcip-emulator/dist/main.js",
+    "stability": "npm run build && node --experimental-strip-types tools/stability-bench.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
     "aedes": "^0.51.3",
     "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "net-snmp": "^3.29.1"
   }
 }

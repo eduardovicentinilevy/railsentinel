@@ -1,9 +1,23 @@
 {
   "files": [],
   "references": [
-    { "path": "packages/contracts" },
-    { "path": "services/ingest-gateway" },
-    { "path": "services/ats-core" },
-    { "path": "services/operator-api" }
+    {
+      "path": "packages/contracts"
+    },
+    {
+      "path": "packages/plant"
+    },
+    {
+      "path": "services/ingest-gateway"
+    },
+    {
+      "path": "services/ats-core"
+    },
+    {
+      "path": "services/operator-api"
+    },
+    {
+      "path": "services/ntcip-emulator"
+    }
   ]
 }

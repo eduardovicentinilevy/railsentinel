@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://railsentinel.vlt-bs.br/schemas/commands/train.regulation.v1.schema.json",
+  "title": "vlt.train.regulation.v1",
+  "description": "Comando de regulacao descendente (CCO -> composicao). ACONSELHAMENTO, nao ordem: e emitido sob Integridade Basica e fica subordinado ao ATP e ao julgamento do operador. A composicao verifica a assinatura do CCO antes de aplicar.",
+  "type": "object",
+  "required": ["train_id", "dwell_s", "coast_pct"],
+  "additionalProperties": false,
+  "properties": {
+    "train_id":   { "type": "string", "maxLength": 16 },
+    "dwell_s":    { "type": "integer", "minimum": 0, "maximum": 300, "description": "Dwell aconselhado na proxima parada." },
+    "coast_pct":  { "type": "number", "minimum": 0, "maximum": 15, "description": "Reducao por inercia, em % da velocidade de via. 0 = sem coasting." },
+    "headway_error_s": { "type": "integer" },
+    "setpoint_s": { "type": "integer", "minimum": 0 },
+    "rationale":  { "type": "string", "maxLength": 400, "description": "Texto exibido ao operador de bordo. Um aconselhamento sem justificativa e ignorado - ou pior, obedecido sem entendimento." }
+  }
+}

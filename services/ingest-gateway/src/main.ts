@@ -1,7 +1,9 @@
 import mqtt from 'mqtt';
 import { CORE, FIELD_SUBSCRIPTIONS, type Message } from '@railsentinel/contracts';
+import { readFileSync } from 'node:fs';
 import { DeviceRegistry } from './registry.js';
 import { AdmissionPipeline, type Verdict } from './pipeline.js';
+import { Downlink } from './downlink.js';
 
 /**
  * ingest-gateway - o conduite IEC 62443 entre a Zona Periferica (campo) e a
@@ -19,12 +21,15 @@ const FIELD_URL = process.env.FIELD_BROKER_URL ?? 'mqtt://127.0.0.1:1883';
 const CORE_URL = process.env.CORE_BROKER_URL ?? 'mqtt://127.0.0.1:1884';
 const REGISTRY_PATH = process.env.DEVICE_REGISTRY ?? '.secrets/devices.json';
 const REQUIRE_SIG = process.env.REQUIRE_SIGNATURE !== 'false';
+const CCO_KEY_PATH = process.env.CCO_KEY ?? '.secrets/cco-key.json';
 
 const log = (lvl: string, msg: string, extra: Record<string, unknown> = {}) =>
   console.log(JSON.stringify({ t: new Date().toISOString(), svc: 'ingest-gateway', lvl, msg, ...extra }));
 
 const registry = DeviceRegistry.fromFile(REGISTRY_PATH);
 const pipeline = new AdmissionPipeline(registry, { requireSignature: REQUIRE_SIG });
+
+const downlink = new Downlink(JSON.parse(readFileSync(CCO_KEY_PATH, 'utf8')));
 
 log('info', 'trust store carregado', { devices: registry.size, requireSignature: REQUIRE_SIG });
 
@@ -43,7 +48,50 @@ field.on('connect', () => {
   }
 });
 
-core.on('connect', () => log('info', 'conectado ao barramento do NUCLEO (zona de integracao)', { url: CORE_URL }));
+core.on('connect', () => {
+  log('info', 'conectado ao barramento do NUCLEO (zona de integracao)', { url: CORE_URL });
+  // Conduite descendente: o gateway tambem e a unica saida do nucleo para o campo.
+  core.subscribe('core/cmd/train/+/regulation', { qos: 1 });
+  log('info', 'conduite descendente ativo', { topic: 'core/cmd/train/+/regulation' });
+});
+
+/** Estatisticas do sentido descendente, separadas do ascendente. */
+const downStats = { sent: 0 };
+
+core.on('message', (topic, payload) => {
+  const m = /^core\/cmd\/train\/([^/]+)\/regulation$/.exec(topic);
+  if (!m) return;
+  const trainId = m[1]!;
+
+  let cmd: Record<string, unknown>;
+  try { cmd = JSON.parse(payload.toString('utf8')); } catch { return; }
+
+  // O gateway nao reinterpreta a decisao do ATS; apenas a empacota, assina e
+  // entrega no subtopico de comando que a ACL do dispositivo permite ouvir.
+  const signed = downlink.build({
+    type: 'vlt.train.regulation.v1',
+    data: {
+      train_id: trainId,
+      dwell_s: cmd.dwell_s,
+      coast_pct: cmd.coast_pct,
+      headway_error_s: cmd.headway_error_s,
+      setpoint_s: cmd.setpoint_s,
+      rationale: cmd.rationale,
+    },
+    line: (cmd.line as 'L1' | 'L2') ?? 'L2',
+    zone: 'FROTA',
+    // Regulacao de headway e funcao de Integridade Basica. O carimbo desce com
+    // o comando para que o computador de bordo saiba que e aconselhamento.
+    integrityClass: 'basic',
+  });
+
+  const fieldTopic = Downlink.topicFor((cmd.line as string) ?? 'L2', 'FROTA', 'train', 'FLEET-GW', 'regulation');
+  field.publish(fieldTopic, JSON.stringify(signed), { qos: 1 });
+  downStats.sent += 1;
+  log('info', 'comando de regulacao entregue ao campo', {
+    train: trainId, dwell_s: cmd.dwell_s, coast_pct: cmd.coast_pct, topic: fieldTopic,
+  });
+});
 field.on('error', (e) => log('error', 'erro no broker de campo', { err: e.message }));
 core.on('error', (e) => log('error', 'erro no barramento do nucleo', { err: e.message }));
 
@@ -111,6 +159,7 @@ field.on('message', (topic, payload) => {
 setInterval(() => {
   log('info', 'metricas da fronteira', {
     accepted: stats.accepted, rejected: stats.rejected, byStage: Object.fromEntries(stats.byStage),
+    downlink_sent: downStats.sent,
   });
 }, 30_000).unref();
 

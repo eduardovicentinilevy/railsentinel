@@ -36,6 +36,7 @@ const payloadValidators = new Map<string, ValidateFunction>([
   ['vlt.edge.intrusion.v1', ajv.compile(load('events/edge.intrusion.v1.schema.json'))],
   ['vlt.edge.health.v1', ajv.compile(load('events/edge.health.v1.schema.json'))],
   ['vlt.train.position.v1', ajv.compile(load('telemetry/train.position.v1.schema.json'))],
+  ['vlt.train.regulation.v1', ajv.compile(load('commands/train.regulation.v1.schema.json'))],
 ]);
 
 export interface ValidationResult {
