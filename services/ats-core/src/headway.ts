@@ -1,5 +1,5 @@
 import type { TrainState } from './fleet.js';
-import { allSections, getSection, nominalRunTimeS } from './topology.js';
+import { allSections, getSection, lineLengthM, nominalRunTimeS, traversalTimeS } from './topology.js';
 
 /**
  * Regulacao de headway - amortecimento de bunching.
@@ -129,7 +129,24 @@ export class HeadwayRegulator {
   readonly #integralClampS: number;
   readonly #state = new Map<string, ControllerState>();
 
-  constructor(kp = 0.25, ki = 0.02, integralClampS = 240) {
+  /**
+   * Ganhos padrao sintonizados pelo banco de estabilidade (tools/stability-bench.ts).
+   *
+   * Os valores originais (Kp=0.25, Ki=0.02) foram escolhidos por intuicao sobre
+   * um modelo que tratava cada par de trens isoladamente. A analise modal
+   * mostrou que o acoplamento circulante amplifica o ganho da malha por
+   * |1 - ω^k| = √3, e naqueles ganhos o raio espectral ficava em 0.974 -
+   * estavel no papel, praticamente sem margem, e empiricamente PIOR que nao
+   * regular (RMS 150s contra 70s em malha aberta).
+   *
+   * Kp=0.51 / Ki=0.017 dao ρ=0.708 com margem de ganho de 1.72x, e reduzem o
+   * erro RMS em 45% frente a malha aberta. A margem e modesta de proposito:
+   * ganhos menores dariam mais folga mas convergencia lenta demais para
+   * amortecer bunching antes que ele se propague pela linha.
+   *
+   * Reproduzir: npm run stability
+   */
+  constructor(kp = 0.51, ki = 0.017, integralClampS = 240) {
     this.#kp = kp;
     this.#ki = ki;
     this.#integralClampS = integralClampS;
@@ -205,26 +222,20 @@ export class HeadwayRegulator {
 }
 
 /**
- * Headway medido: distancia ate o trem da frente convertida em tempo pela
- * velocidade de via da secao. Usa velocidade de VIA, nao velocidade instantanea
- * do trem - senao um trem parado produz headway infinito e a malha diverge.
+ * Headway medido: tempo de separacao ate o trem da frente.
+ *
+ * Inclui os dwells das paradas intermediarias, porque o setpoint (ciclo/N)
+ * tambem os inclui - medicao e referencia precisam estar na mesma base. Medir
+ * so distancia/velocidade produzia um erro negativo sistematico igual ao dwell
+ * total da linha, e a malha divergia com todos os trens no dwell maximo.
+ *
+ * Usa velocidade de VIA e nao a instantanea: um trem parado na estacao tem
+ * velocidade zero, e dividir por ela produziria headway infinito.
  */
 function measuredHeadwayS(train: TrainState, ahead: TrainState, line: 'L1' | 'L2'): number {
   let gap = ahead.linear_pos_m - train.linear_pos_m;
-  if (gap <= 0) {
-    const lineLength = lineLengthM(line);
-    gap += lineLength; // wrap no loop
-  }
-  const sec = getSection(train.section_id);
-  const speedKmh = sec?.line_speed_kmh ?? 30;
-  return (gap / 1000 / speedKmh) * 3600;
-}
-
-/** Comprimento total da linha - usado para o wrap-around do loop da L2. */
-function lineLengthM(line: 'L1' | 'L2'): number {
-  let total = 0;
-  for (const s of allSections()) if (s.line === line) total += s.length_m;
-  return total;
+  if (gap <= 0) gap += lineLengthM(line); // wrap no loop
+  return traversalTimeS(line, train.linear_pos_m, gap, DWELL_NOMINAL_S);
 }
 
 function clamp(v: number, lo: number, hi: number): number {

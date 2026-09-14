@@ -102,3 +102,68 @@ export function upstreamOf(sectionId: string, depth = 2): TrackSection[] {
 export function nominalRunTimeS(section: TrackSection): number {
   return (section.length_m / 1000 / section.line_speed_kmh) * 3600;
 }
+
+/** Secoes de uma linha na ordem de marcha, com o offset linear acumulado. */
+export function orderedSections(line: 'L1' | 'L2'): Array<{ section: TrackSection; startM: number }> {
+  const out: Array<{ section: TrackSection; startM: number }> = [];
+  let acc = 0;
+  for (const s of SECTIONS) {
+    if (s.line !== line) continue;
+    out.push({ section: s, startM: acc });
+    acc += s.length_m;
+  }
+  return out;
+}
+
+export function lineLengthM(line: 'L1' | 'L2'): number {
+  return SECTIONS.filter((s) => s.line === line).reduce((a, s) => a + s.length_m, 0);
+}
+
+/**
+ * Tempo para percorrer 'gapM' metros a partir de uma posicao linear, incluindo
+ * as PARADAS encontradas no caminho.
+ *
+ * Esta funcao existe por causa de um bug real: o headway media apenas
+ * distancia/velocidade, enquanto o setpoint (ciclo/N) inclui os dwells. A
+ * diferenca sistematica era o dwell total da linha - 210 s na L2 - e fazia com
+ * que mesmo trens perfeitamente espacados apresentassem erro negativo
+ * permanente. O controlador entao segurava as tres composicoes no dwell maximo
+ * indefinidamente e o desvio de tabela divergia.
+ *
+ * Medicao e setpoint precisam estar na mesma base. Headway e separacao
+ * TEMPORAL, e tempo entre dois trens inclui o tempo parado.
+ *
+ * Consequencia util: espacamento temporal uniforme NAO significa espacamento
+ * em distancia uniforme, porque as secoes tem velocidades de via diferentes.
+ * O controlador equaliza tempo, que e o que o passageiro na plataforma sente.
+ */
+export function traversalTimeS(line: 'L1' | 'L2', fromLinearM: number, gapM: number, dwellS: number): number {
+  const ordered = orderedSections(line);
+  if (ordered.length === 0 || gapM <= 0) return 0;
+  const total = lineLengthM(line);
+
+  let pos = ((fromLinearM % total) + total) % total;
+  let idx = ordered.findIndex(({ section, startM }) => pos >= startM && pos < startM + section.length_m);
+  if (idx < 0) idx = 0;
+  let offset = pos - ordered[idx]!.startM;
+
+  let remaining = Math.min(gapM, total);
+  let t = 0;
+
+  while (remaining > 0) {
+    const sec = ordered[idx]!.section;
+    const avail = sec.length_m - offset;
+    const step = Math.min(remaining, avail);
+    t += (step / 1000 / sec.line_speed_kmh) * 3600;
+    remaining -= step;
+    offset += step;
+
+    if (offset >= sec.length_m - 1e-9 && remaining > 0) {
+      idx = (idx + 1) % ordered.length;
+      offset = 0;
+      // Cruzar para uma secao com estacao implica uma parada no caminho.
+      if (ordered[idx]!.section.stop_id) t += dwellS;
+    }
+  }
+  return t;
+}
