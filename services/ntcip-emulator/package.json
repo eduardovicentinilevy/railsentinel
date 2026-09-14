@@ -1,0 +1,7 @@
+{
+  "name": "@railsentinel/ntcip-emulator",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/main.js",
+  "dependencies": { "@railsentinel/contracts": "*", "net-snmp": "^3.29.1", "mqtt": "^5.10.3" }
+}

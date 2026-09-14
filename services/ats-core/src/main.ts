@@ -5,7 +5,7 @@ import {
 import { SafetyGuard } from './safety-guard.js';
 import { FleetRegistry } from './fleet.js';
 import { HeadwayRegulator, resolveSetpoint, trainsRequiredForTimetable } from './headway.js';
-import { TspController } from './tsp.js';
+import { TspController, type CrossingFeedback } from './tsp.js';
 import { IntrusionHandler } from './intrusion.js';
 import { getSection } from './topology.js';
 
@@ -46,7 +46,8 @@ guard.onViolation((v) => {
 
 bus.on('connect', () => {
   log('info', 'conectado ao barramento do nucleo', { url: CORE_URL });
-  const subs = [CORE.normalizedIntrusion, CORE.normalizedHealth, CORE.normalizedPosition, 'core/cmd/operator/#'];
+  const subs = [CORE.normalizedIntrusion, CORE.normalizedHealth, CORE.normalizedPosition, 'core/cmd/operator/#',
+                'ntcip/+/state', 'ntcip/+/grant'];
   for (const t of subs) bus.subscribe(t, { qos: 1 });
   log('info', 'ATS ativo - classe de integridade: basic (EN 50716)', { subscriptions: subs });
 });
@@ -76,8 +77,43 @@ bus.on('message', (topic, payload) => {
       break;
     default:
       if (topic.startsWith('core/cmd/operator/')) onOperatorCommand(topic, msg as unknown as Record<string, unknown>);
+      else if (topic.endsWith('/state')) onCrossingState(msg as unknown as Record<string, unknown>);
+      else if (topic.endsWith('/grant')) onGrantResult(msg as unknown as Record<string, unknown>);
   }
 });
+
+/* ------------------------------------------------------------------ */
+/* Realimentacao do HIL: o que o controlador REALMENTE fez              */
+/* ------------------------------------------------------------------ */
+
+function onCrossingState(st: Record<string, unknown>): void {
+  const fb: CrossingFeedback = {
+    crossing_id: String(st.crossing_id),
+    active_phase: Number(st.active_phase),
+    color: st.color as CrossingFeedback['color'],
+    seconds_until_vlt_green: Number(st.seconds_until_vlt_green),
+    granted_extension_s: Number(st.granted_extension_s ?? 0),
+    cross_street_debt_s: Number(st.cross_street_debt_s ?? 0),
+    at: Date.now(),
+  };
+  tsp.observe(fb);
+}
+
+function onGrantResult(r: Record<string, unknown>): void {
+  tsp.recordOutcome({
+    crossing_id: String(r.crossing_id),
+    request_id: String(r.request_id),
+    granted: Boolean(r.granted),
+    ...(r.reason ? { reason: String(r.reason) } : {}),
+    ...(r.effect ? { effect: String(r.effect) } : {}),
+    ...(r.delaySeconds != null ? { delaySeconds: Number(r.delaySeconds) } : {}),
+  });
+  log(r.granted ? 'info' : 'warn', r.granted ? 'prioridade CONCEDIDA pelo controlador' : 'prioridade RECUSADA pelo controlador', {
+    crossing: r.crossing_id, request_id: r.request_id,
+    ...(r.effect ? { effect: r.effect } : {}), ...(r.reason ? { reason: r.reason } : {}),
+    grant_rate: Number(tsp.grantRate().toFixed(3)),
+  });
+}
 
 /* ------------------------------------------------------------------ */
 /* Fluxo principal: invasao de via                                      */
@@ -174,10 +210,22 @@ function onPosition(msg: Ingested<TrainPositionData>): void {
   if (evaluation.decision) {
     const ntcip = tsp.toNtcip(evaluation.decision);
     bus.publish(CORE.tspDecision, JSON.stringify(evaluation.decision), { qos: 1 });
+
+    // Emissao para o controlador (HIL na Fase 1, SNMPv3 em campo na Fase 2).
+    const strategyNumber = ntcip?.mib_objects['priorityRequest.priorityRequestStrategyNumber'] ?? 1;
+    bus.publish(`ntcip/${evaluation.decision.crossing_id}/priority_request`, JSON.stringify({
+      phase: ntcip?.mib_objects['priorityRequest.priorityRequestPhase'],
+      strategy: strategyNumber,
+      vehicleClass: 6,
+      requestId: evaluation.request_id,
+      maxExtension: 10,
+    }), { qos: 1 });
+
     log('info', 'prioridade semaforica solicitada', {
       crossing: evaluation.decision.crossing_id, train: train.train_id,
       strategy: evaluation.decision.ntcip_strategy, eta_s: Math.round(evaluation.eta_s ?? 0),
-      delay_s: train.schedule_dev_s, ntcip_endpoint: ntcip?.endpoint, mib: ntcip?.mib_objects,
+      delay_s: train.schedule_dev_s, request_id: evaluation.request_id,
+      ntcip_endpoint: ntcip?.endpoint,
     });
   }
 }
@@ -234,7 +282,7 @@ setInterval(() => {
     for (const cmd of cmds) {
       if (!guard.authorize('adjust_dwell_time', 'basic', `reg-${cmd.train_id}`).permitted) continue;
       if (Math.abs(cmd.dwell_delta_s) < 3 && cmd.coast_pct === 0) continue; // nada material a comandar
-      bus.publish(`core/cmd/train/${cmd.train_id}/regulation`, JSON.stringify(cmd), { qos: 1 });
+      bus.publish(`core/cmd/train/${cmd.train_id}/regulation`, JSON.stringify({ ...cmd, line }), { qos: 1 });
       log('info', 'ajuste de regulacao emitido', {
         line, train: cmd.train_id, dwell_s: cmd.dwell_s, delta_s: cmd.dwell_delta_s,
         coast_pct: cmd.coast_pct, headway_error_s: cmd.headway_error_s, setpoint_s: cmd.setpoint_s,
@@ -257,6 +305,9 @@ function publishSystemState(): void {
     })),
     open_incidents: intrusion.openIncidents(),
     tsp_inhibitions: tsp.inhibitions(),
+    tsp_grant_rate: Number(tsp.grantRate().toFixed(3)),
+    crossings: ['XC-ANA-COSTA', 'XC-F-GLICERIO', 'XC-CAMPOS-MELLO', 'XC-JOAO-PESSOA', 'XC-CONSTITUICAO']
+      .map((id) => tsp.feedbackFor(id)).filter(Boolean),
     edge_nodes: [...edgeHealth.values()].map((h) => ({ src: h.src, status: h.status, fps: h.fps, camera_link: h.camera_link, at: h.at })),
     safety_violations_blocked: guard.violations.length,
   };

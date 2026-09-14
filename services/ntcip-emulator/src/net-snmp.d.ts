@@ -1,0 +1,47 @@
+/**
+ * Declaracao minima de net-snmp - a biblioteca nao publica tipos.
+ * Cobre apenas a superficie que o emulador usa (agente + MIB escalar).
+ */
+declare module 'net-snmp' {
+  export const ObjectType: { Integer: number; OctetString: number; Counter32: number; Gauge32: number };
+  export const MibProviderType: { Scalar: number; Table: number };
+
+  export interface MibRequest {
+    done(result?: { type: number; value: number | string }): void;
+    operation: number;
+    oid: string;
+  }
+
+  export interface MibProvider {
+    name: string;
+    type: number;
+    oid: string;
+    scalarType?: number;
+    handler?: (req: MibRequest) => void;
+  }
+
+  export interface Mib {
+    registerProvider(provider: MibProvider): void;
+    setScalarValue(name: string, value: number | string): void;
+    getScalarValue(name: string): number | string;
+  }
+
+  export interface Agent {
+    getMib(): Mib;
+    close(): void;
+  }
+
+  export function createAgent(
+    options: { port?: number; disableAuthorization?: boolean },
+    callback: (error: Error | null, data?: unknown) => void,
+  ): Agent;
+
+  export interface Session {
+    get(oids: string[], cb: (error: Error | null, varbinds: Array<{ oid: string; value: number | string; type: number }>) => void): void;
+    close(): void;
+  }
+
+  export function createSession(target: string, community: string, options?: { port?: number; timeout?: number; retries?: number }): Session;
+  export function isVarbindError(varbind: unknown): boolean;
+  export function varbindError(varbind: unknown): string;
+}

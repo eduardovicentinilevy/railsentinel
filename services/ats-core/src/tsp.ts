@@ -26,10 +26,15 @@ export const MIN_DELAY_FOR_PRIORITY_S = 45;
 export const REQUEST_HORIZON_S = 25;
 /** Teto de extensao de verde para nao esfomear o movimento transversal. */
 export const MAX_GREEN_EXTENSION_S = 10;
+/** Janela em que um novo pedido para o mesmo cruzamento e suprimido. */
+export const REQUEST_DEBOUNCE_MS = 20_000;
+/** Folga aceita entre o verde previsto e o ETA antes de pedir prioridade. */
+export const GREEN_MARGIN_S = 3;
 
 export interface TspEvaluation {
   decision: TspDecision | null;
   eta_s?: number;
+  request_id?: string;
   skipped_reason?: string;
 }
 
@@ -40,13 +45,62 @@ export interface NtcipCommand {
   strategy: 'phase_call' | 'green_extension' | 'red_truncation';
 }
 
+/** Estado realimentado pelo controlador de trafego (HIL / campo). */
+export interface CrossingFeedback {
+  crossing_id: string;
+  active_phase: number;
+  color: 'green' | 'yellow' | 'all_red';
+  seconds_until_vlt_green: number;
+  granted_extension_s: number;
+  cross_street_debt_s: number;
+  at: number;
+}
+
+export interface GrantResult {
+  crossing_id: string;
+  request_id: string;
+  granted: boolean;
+  reason?: string;
+  effect?: string;
+  delaySeconds?: number;
+}
+
 export class TspController {
   readonly #guard: SafetyGuard;
   /** Cruzamentos com prioridade suspensa por incidente. */
   readonly #inhibited = new Map<string, string>();
+  /** Ultimo estado conhecido de cada controlador - a realimentacao da malha. */
+  readonly #feedback = new Map<string, CrossingFeedback>();
+  /** Pedido em voo por cruzamento, com o instante de emissao. */
+  readonly #inFlight = new Map<string, { request_id: string; at: number; train_id: string }>();
+  /** Historico de desfechos, para medir convergencia e fome do transversal. */
+  readonly #outcomes: GrantResult[] = [];
 
   constructor(guard: SafetyGuard) {
     this.#guard = guard;
+  }
+
+  /** Absorve o estado publicado pelo controlador semaforico. */
+  observe(fb: CrossingFeedback): void {
+    this.#feedback.set(fb.crossing_id, fb);
+  }
+
+  feedbackFor(crossingId: string): CrossingFeedback | undefined {
+    return this.#feedback.get(crossingId);
+  }
+
+  recordOutcome(result: GrantResult): void {
+    this.#outcomes.push(result);
+    if (this.#outcomes.length > 500) this.#outcomes.shift();
+    this.#inFlight.delete(result.crossing_id);
+  }
+
+  get outcomes(): readonly GrantResult[] { return this.#outcomes; }
+
+  /** Fracao de pedidos atendidos - indicador de saude do TSP. */
+  grantRate(): number {
+    if (this.#outcomes.length === 0) return 0;
+    return this.#outcomes.filter((o) => o.granted).length / this.#outcomes.length;
   }
 
   /**
@@ -94,6 +148,21 @@ export class TspController {
       return { decision: null, skipped_reason: 'telemetria obsoleta - nao se pede fase com posicao incerta' };
     }
 
+    // Um pedido ja em voo para este cruzamento. Reemitir a cada atualizacao de
+    // posicao - que chegam a 1 Hz - inundaria o controlador com pedidos
+    // redundantes e, pior, produziria oscilacao: cada novo pedido reescreve a
+    // chamada de fase e o controlador nunca conclui a transicao. Este gate e o
+    // que mantem a malha estavel; sem ele o TSP nao converge.
+    const flight = this.#inFlight.get(crossing.id);
+    if (flight && Date.now() - flight.at < REQUEST_DEBOUNCE_MS) {
+      return { decision: null, skipped_reason: `pedido ${flight.request_id} ainda em voo para ${crossing.id}` };
+    }
+
+    // Realimentacao: se o controlador ja vai dar verde a tempo, nao se pede
+    // nada. Pedir prioridade que nao muda o resultado so gasta credito politico
+    // com o orgao de transito.
+    const fb = this.#feedback.get(crossing.id);
+
     const delay = train.schedule_dev_s ?? 0;
     if (delay < MIN_DELAY_FOR_PRIORITY_S) {
       return {
@@ -112,15 +181,36 @@ export class TspController {
       return { decision: null, eta_s, skipped_reason: `ETA de ${Math.round(eta_s)}s alem do horizonte de ${REQUEST_HORIZON_S}s` };
     }
 
+    if (fb && fb.seconds_until_vlt_green <= eta_s + GREEN_MARGIN_S) {
+      return {
+        decision: null, eta_s,
+        skipped_reason: `controlador ja da verde em ${fb.seconds_until_vlt_green}s (ETA ${Math.round(eta_s)}s) - prioridade desnecessaria`,
+      };
+    }
+
     const authorized = this.#guard.authorize('grant_tsp_request', evidenceClass, sourceEventId);
     if (!authorized.permitted) {
       return { decision: null, eta_s, skipped_reason: 'barrado pelo SafetyGuard: evidencia de Integridade Basica nao concede prioridade' };
     }
 
-    const strategy = eta_s < 8 ? 'green_extension' : eta_s < 15 ? 'red_truncation' : 'phase_call';
+    // A estrategia depende do ESTADO REAL do controlador, nao apenas do ETA.
+    // Pedir extensao de verde com a fase em vermelho e um pedido que o
+    // controlador vai recusar - e uma recusa evitavel e desperdicio de ciclo.
+    let strategy: 'phase_call' | 'green_extension' | 'red_truncation';
+    if (fb?.color === 'green' && fb.active_phase === crossing.vlt_phase) {
+      strategy = 'green_extension';
+    } else if (eta_s < 15) {
+      strategy = 'red_truncation';
+    } else {
+      strategy = 'phase_call';
+    }
+
+    const requestId = `${train.train_id}-${Date.now().toString(36)}`;
+    this.#inFlight.set(crossing.id, { request_id: requestId, at: Date.now(), train_id: train.train_id });
 
     return {
       eta_s,
+      request_id: requestId,
       decision: {
         crossing_id: crossing.id,
         train_id: train.train_id,
