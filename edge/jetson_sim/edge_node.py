@@ -199,6 +199,20 @@ class EdgeNode:
         sev = "info" if status == "ok" else "major"
         self.publish("hb", self.envelope_message("vlt.edge.health.v1", sev, data), retain=True)
 
+    def intrusion_from_assessment(self, a: Any, state: str) -> dict:
+        """Emite evento a partir de uma avaliacao REAL do pipeline de visao.
+
+        Diferenca frente ao gerador sintetico: confianca, classe, folga de
+        gabarito e persistencia vem da cadeia deteccao -> rastreio -> homografia
+        rodando sobre pixels, nao de valores escolhidos a mao. E o caminho que
+        existe em campo; o gerador continua util para exercitar cenarios que a
+        cena sintetica nao cobre.
+        """
+        return self.intrusion(
+            obj_class=a.cls, conf=a.confidence, state=state,
+            gauge_margin=a.gauge_margin_m, dwell_ms=a.dwell_ms,
+        )
+
     def intrusion(self, obj_class: str, conf: float, state: str = "onset",
                   gauge_margin: float = -0.35, dwell_ms: int = 1200) -> dict:
         data = {
@@ -300,6 +314,72 @@ def scenario_degraded(node: EdgeNode) -> None:
     time.sleep(2)
 
 
+def scenario_vision(node: EdgeNode) -> None:
+    """Pipeline de visao real alimentando o barramento.
+
+    Roda deteccao, rastreio e geometria de gabarito sobre quadros renderizados e
+    publica apenas o que a cadeia efetivamente concluiu. A maquina de estados
+    onset/sustained/cleared e derivada da persistencia da trilha, nao de um
+    roteiro - que e como funciona no dispositivo.
+    """
+    import sys as _sys
+    from pathlib import Path as _Path
+    _sys.path.insert(0, str(_Path(__file__).resolve().parent))
+    from vision.detector import build_detector
+    from vision.geometry import CameraCalibration, GaugeProjector
+    from vision.pipeline import EdgePipeline
+    from vision.scene import SceneRenderer, intrusion_sequence
+
+    print("\n=== CENARIO: pipeline de visao real (deteccao -> gabarito -> evento) ===\n")
+    node.heartbeat("ok")
+
+    projector = GaugeProjector(CameraCalibration.default_totem())
+    renderer = SceneRenderer(projector)
+    detector = build_detector()
+    pipeline = EdgePipeline(detector, projector)
+    print(f"[{node.cfg.src}] backend de deteccao: {detector.name} v{detector.version}")
+
+    for i in range(12):  # aquecimento do subtrator de fundo
+        pipeline.process(renderer.render([], jitter_seed=i))
+
+    # Estado por trilha, para decidir onset/sustained/cleared.
+    announced: dict[str, str] = {}
+    frames = intrusion_sequence(90)
+
+    for idx, objs in enumerate(frames):
+        res = pipeline.process(renderer.render(objs, jitter_seed=100 + idx), now=idx / 30.0)
+        seen = set()
+
+        for a in res.intrusions:
+            seen.add(a.track_id)
+            prev = announced.get(a.track_id)
+            if prev is None:
+                announced[a.track_id] = "onset"
+                print(f"  quadro {idx}: INVASAO {a.cls} conf={a.confidence} folga={a.gauge_margin_m}m "
+                      f"lat={a.lateral_m}m lon={a.longitudinal_m}m ({res.total_ms:.1f}ms)")
+                node.intrusion_from_assessment(a, "onset")
+            elif prev == "onset" and a.dwell_ms > 1500:
+                announced[a.track_id] = "sustained"
+                node.intrusion_from_assessment(a, "sustained")
+
+        # Trilha que estava invadindo e deixou de invadir -> candidata a liberacao.
+        for tid, st in list(announced.items()):
+            if tid not in seen and st in ("onset", "sustained"):
+                announced[tid] = "cleared"
+                match = next((x for x in res.assessments if x.track_id == tid), None)
+                if match is not None:
+                    print(f"  quadro {idx}: condicao normalizada na trilha {tid}")
+                    node.intrusion_from_assessment(match, "cleared")
+
+        if idx % 30 == 0:
+            node.heartbeat("ok")
+
+    stats = pipeline.latency_stats()
+    print(f"\n  latencia da cadeia: media {stats['mean_ms']}ms | p95 {stats['p95_ms']}ms "
+          f"| sustenta {stats['fps_at_p95']} fps")
+    node.heartbeat("ok")
+
+
 def scenario_spoof(node: EdgeNode) -> None:
     """Prova negativa: o que a fronteira recusa."""
     print("\n=== CENARIO: tentativas de falsificacao (todas devem ser RECUSADAS) ===\n")
@@ -353,7 +433,8 @@ def scenario_spoof(node: EdgeNode) -> None:
     time.sleep(1.5)
 
 
-SCENARIOS = {"intrusion": scenario_intrusion, "degraded": scenario_degraded, "spoof": scenario_spoof}
+SCENARIOS = {"intrusion": scenario_intrusion, "degraded": scenario_degraded,
+             "spoof": scenario_spoof, "vision": scenario_vision}
 
 
 def main() -> None:
