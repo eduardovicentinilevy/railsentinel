@@ -135,10 +135,15 @@ export class TspController {
   /**
    * Traduz a decisao para objetos MIB do NTCIP 1202.
    *
-   * Na Fase 1 isto e emitido para um emulador de controlador em malha fechada
-   * (HIL). Na Fase 2 o mesmo dicionario vai por SNMP ao controlador real, sem
-   * mudanca na camada de decisao - por isso a traducao e uma funcao pura e
-   * separada da logica de elegibilidade.
+   * ESTADO ATUAL: malha ABERTA. Os objetos MIB sao gerados e registrados, mas
+   * nao ha transporte SNMP nem emulador de controlador respondendo - portanto
+   * nao ha realimentacao de estado de fase e nenhuma estabilidade de TSP foi
+   * demonstrada. O emulador em malha fechada (HIL) exigido pela Fase 1 do
+   * roadmap ainda nao existe; ver docs/ARQUITETURA.md, secao de limites.
+   *
+   * A traducao e funcao pura e separada da elegibilidade justamente para que
+   * fechar a malha - contra emulador agora, contra o controlador da CET-Santos
+   * depois - nao exija mudanca na camada de decisao.
    */
   toNtcip(decision: TspDecision): NtcipCommand | null {
     const crossing = getCrossing(decision.crossing_id);
