@@ -1,0 +1,74 @@
+# Bancada da Fase 1 com brokers de producao no lugar dos de desenvolvimento.
+#
+# A topologia reproduz a segmentacao IEC 62443 em redes Docker separadas:
+# nenhum servico do nucleo alcanca a rede de campo, e o ingest-gateway e o unico
+# container conectado as duas. Essa e a propriedade que o compose existe para
+# demonstrar - se o gateway cair, o campo fica isolado do CCO por construcao,
+# nao por configuracao de firewall.
+services:
+  broker-campo:
+    image: emqx/emqx:5.8.4
+    container_name: rs-broker-campo
+    environment:
+      EMQX_NODE__NAME: emqx@broker-campo
+      EMQX_ALLOW_ANONYMOUS: "true"        # Fase 1. Producao: mTLS + ACL por CN.
+      EMQX_LISTENERS__TCP__DEFAULT__MAX_CONNECTIONS: "5000"
+    ports: ["1883:1883", "18083:18083"]
+    networks: [campo]
+    healthcheck:
+      test: ["CMD", "/opt/emqx/bin/emqx", "ctl", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  broker-nucleo:
+    image: emqx/emqx:5.8.4
+    container_name: rs-broker-nucleo
+    environment:
+      EMQX_NODE__NAME: emqx@broker-nucleo
+      EMQX_ALLOW_ANONYMOUS: "true"
+    ports: ["1884:1883"]
+    networks: [nucleo]
+    healthcheck:
+      test: ["CMD", "/opt/emqx/bin/emqx", "ctl", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  # O conduite: unico servico presente nas duas redes.
+  ingest-gateway:
+    build: { context: ., dockerfile: Dockerfile }
+    command: node services/ingest-gateway/dist/main.js
+    environment:
+      FIELD_BROKER_URL: mqtt://broker-campo:1883
+      CORE_BROKER_URL: mqtt://broker-nucleo:1883
+      DEVICE_REGISTRY: /app/.secrets/devices.json
+    volumes: ["./.secrets:/app/.secrets:ro"]   # trust store somente leitura
+    networks: [campo, nucleo]
+    depends_on:
+      broker-campo: { condition: service_healthy }
+      broker-nucleo: { condition: service_healthy }
+
+  ats-core:
+    build: { context: ., dockerfile: Dockerfile }
+    command: node services/ats-core/dist/main.js
+    environment:
+      CORE_BROKER_URL: mqtt://broker-nucleo:1883
+    networks: [nucleo]                          # sem acesso ao campo
+    depends_on:
+      broker-nucleo: { condition: service_healthy }
+
+  operator-api:
+    build: { context: ., dockerfile: Dockerfile }
+    command: node services/operator-api/dist/main.js
+    environment:
+      CORE_BROKER_URL: mqtt://broker-nucleo:1883
+      PORT: "8080"
+    ports: ["8080:8080"]
+    networks: [nucleo]
+    depends_on:
+      broker-nucleo: { condition: service_healthy }
+
+networks:
+  campo:  { driver: bridge }   # Zona Periferica  - nos de borda, telemetria
+  nucleo: { driver: bridge }   # Zona de Integracao Operacional
