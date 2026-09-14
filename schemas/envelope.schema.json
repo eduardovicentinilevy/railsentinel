@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://railsentinel.vlt-bs.br/schemas/envelope.schema.json",
+  "title": "RailSentinel Message Envelope v1",
+  "description": "Envelope fixo e de tamanho limitado. Roteadores, ACLs de broker e filtros de zona so precisam ler 'env' - nunca 'data'. Isso mantem o custo de triagem constante e permite que o conduite (IEC 62443) decida encaminhamento sem desserializar o payload de dominio.",
+  "type": "object",
+  "required": ["env", "data"],
+  "additionalProperties": false,
+  "properties": {
+    "env": {
+      "type": "object",
+      "required": ["v", "id", "seq", "boot", "ts", "src", "site", "type", "class", "sev"],
+      "additionalProperties": false,
+      "properties": {
+        "v":   { "const": 1, "description": "Versao do envelope. Quebra de contrato = incremento." },
+        "id":  { "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                 "description": "UUIDv7 (ordenavel por tempo). Chave de idempotencia: o gateway deduplica por (src,id)." },
+        "seq": { "type": "integer", "minimum": 0,
+                 "description": "Contador monotonico DENTRO de uma sessao de boot. Detecta lacunas (pacote perdido) e replay (seq regredido)." },
+        "boot":{ "type": "integer", "minimum": 0,
+                 "description": "Identificador da sessao de boot do dispositivo (epoch ms na inicializacao). Mesma funcao do bdSeq do Sparkplug B: separa 'o no reiniciou e zerou o contador' de 'alguem esta reinjetando trafego antigo'. Sem isto, um reboot legitimo e indistinguivel de replay - e a escolha entre bloquear um no recem-reiniciado ou aceitar replay nao tem resposta boa." },
+        "ts":  { "type": "string", "format": "date-time",
+                 "description": "Relogio da origem, RFC3339 UTC com milissegundos. Exige NTS/PTP sincronizado - dwell e headway sao calculos temporais." },
+        "src": { "type": "string", "maxLength": 96, "pattern": "^[a-z]+:[a-z0-9]+:[A-Z0-9-]+$",
+                 "description": "Identidade da origem no formato kind:platform:ID. DEVE ser igual ao CN do certificado mTLS - o broker recusa publicacao fora do subtopico do proprio ID." },
+        "site":{ "type": "string", "enum": ["santos"] },
+        "line":{ "type": "string", "enum": ["L1", "L2", "L3"] },
+        "zone":{ "type": "string", "maxLength": 32, "description": "Zona geografica/intertravamento (ex.: XC-ANA-COSTA, PATIO-PORTO)." },
+        "type":{ "type": "string", "pattern": "^vlt\\.[a-z]+\\.[a-z_]+\\.v[0-9]+$",
+                 "description": "Tipo + versao do payload. Determina o schema de 'data'." },
+        "class": { "type": "string", "enum": ["basic", "sil2", "sil4"],
+                 "description": "CENELEC EN 50716. 'basic' = Integridade Basica (IA, visao computacional): NUNCA pode ser entrada de funcao vital. O marcador viaja in-band para que a particao seja verificavel em runtime e auditavel em log." },
+        "sev": { "type": "string", "enum": ["info", "warning", "major", "critical"] },
+        "corr":{ "type": "string", "maxLength": 64, "description": "Correlation id para rastrear a cadeia evento -> decisao -> comando." }
+      }
+    },
+    "data": { "type": "object", "description": "Payload tipado. Schema selecionado por env.type." },
+    "sig": {
+      "type": "object",
+      "required": ["alg", "kid", "val"],
+      "additionalProperties": false,
+      "description": "Assinatura destacada sobre a serializacao canonica de {env,data}. mTLS protege o salto; a assinatura protege a mensagem fim-a-fim atraves de brokers e bridges.",
+      "properties": {
+        "alg": { "const": "Ed25519" },
+        "kid": { "type": "string", "maxLength": 64, "description": "Key id: <src-id>:<epoca-de-rotacao>." },
+        "val": { "type": "string", "contentEncoding": "base64url", "maxLength": 128 }
+      }
+    }
+  }
+}

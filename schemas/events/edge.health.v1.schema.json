@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://railsentinel.vlt-bs.br/schemas/events/edge.health.v1.schema.json",
+  "title": "vlt.edge.health.v1",
+  "description": "Heartbeat do no de borda. Tambem e o payload do Last Will and Testament (LWT) do MQTT, com status 'offline'. Principio fail-visible: uma camera muda precisa aparecer como DEGRADADA no painel, nunca como 'nenhuma invasao detectada'. Ausencia de alerta nao e prova de via livre.",
+  "type": "object",
+  "required": ["status"],
+  "additionalProperties": false,
+  "properties": {
+    "status":            { "type": "string", "enum": ["ok", "degraded", "fault", "offline"] },
+    "uptime_s":          { "type": "integer", "minimum": 0 },
+    "cpu_pct":           { "type": "number", "minimum": 0, "maximum": 100 },
+    "gpu_temp_c":        { "type": "number" },
+    "fps":               { "type": "number", "minimum": 0 },
+    "last_infer_age_ms": { "type": "integer", "minimum": 0 },
+    "camera_link":       { "type": "string", "enum": ["up", "down", "flapping"] },
+    "model_loaded":      { "type": "boolean" },
+    "reason":            { "type": "string", "maxLength": 128 }
+  }
+}

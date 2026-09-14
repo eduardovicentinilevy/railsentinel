@@ -1,0 +1,34 @@
+{
+  "name": "railsentinel",
+  "private": true,
+  "version": "0.1.0-alpha",
+  "description": "RailSentinel — middleware IIoT/ATS de proxima geracao para o CCO do VLT da Baixada Santista (Fase 1: simulacao e middleware, TRL 3-5)",
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "workspaces": [
+    "packages/contracts",
+    "services/ingest-gateway",
+    "services/ats-core",
+    "services/operator-api"
+  ],
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "tsc --build --clean",
+    "brokers": "node --experimental-strip-types tools/dev-brokers.ts",
+    "keys": "node --experimental-strip-types tools/provision-keys.ts",
+    "gateway": "node services/ingest-gateway/dist/main.js",
+    "ats": "node services/ats-core/dist/main.js",
+    "operator": "node services/operator-api/dist/main.js",
+    "sim": "python3 edge/jetson_sim/edge_node.py",
+    "dev": "node --experimental-strip-types tools/dev-all.ts",
+    "test": "npm run build && node --test --experimental-strip-types tests/*.test.ts",
+    "fleet": "node --experimental-strip-types tools/fleet-sim.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "aedes": "^0.51.3",
+    "typescript": "^5.7.2"
+  }
+}

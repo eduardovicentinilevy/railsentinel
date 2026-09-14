@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://railsentinel.vlt-bs.br/schemas/telemetry/train.position.v1.schema.json",
+  "title": "vlt.train.position.v1",
+  "description": "Telemetria de posicao da composicao Vossloh Tramlink V4. Alta taxa: em producao este tipo migra de JSON para CBOR/Protobuf (ver docs/PAYLOADS.md, secao 'Quando JSON deixa de servir').",
+  "type": "object",
+  "required": ["train_id", "section_id", "speed_kmh"],
+  "additionalProperties": false,
+  "properties": {
+    "train_id":     { "type": "string", "maxLength": 16 },
+    "run_id":       { "type": "string", "maxLength": 24, "description": "Viagem corrente - chave de juncao com GTFS-RT TripUpdate." },
+    "section_id":   { "type": "string", "maxLength": 32 },
+    "chainage_m":   { "type": "number", "minimum": 0 },
+    "speed_kmh":    { "type": "number", "minimum": 0, "maximum": 120 },
+    "heading_deg":  { "type": "number", "minimum": 0, "maximum": 360 },
+    "next_stop_id": { "type": "string", "maxLength": 24 },
+    "schedule_dev_s": { "type": "integer", "description": "Desvio da tabela horaria. Negativo = adiantado, positivo = atrasado. Entrada primaria do regulador de headway e do gate de TSP." },
+    "doors":        { "type": "string", "enum": ["closed", "opening", "open", "closing"] },
+    "occupancy":    { "type": "string", "enum": ["empty", "many_seats", "few_seats", "standing_room", "crushed", "full"] },
+    "traction_temp_c": { "type": "number" },
+    "battery_soc_pct": { "type": "number", "minimum": 0, "maximum": 100 }
+  }
+}

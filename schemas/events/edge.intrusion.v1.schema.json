@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://railsentinel.vlt-bs.br/schemas/events/edge.intrusion.v1.schema.json",
+  "title": "vlt.edge.intrusion.v1",
+  "description": "Alerta de invasao de gabarito / objeto estranho na via emitido por no Edge AI (NVIDIA Jetson Orin). Contem APENAS metadados - nenhum quadro de video trafega. O video fica na borda e e puxado sob demanda (ver 'evidence'), preservando banda de radio e atendendo a LGPD quanto a imagens de pedestres.",
+  "type": "object",
+  "required": ["event", "state", "object", "track", "detector"],
+  "additionalProperties": false,
+  "properties": {
+    "event": { "type": "string", "enum": ["gauge_intrusion", "foreign_object", "track_defect", "crowd_density"] },
+    "state": { "type": "string", "enum": ["onset", "sustained", "cleared"],
+               "description": "Maquina de estados explicita. 'cleared' NUNCA remove a restricao sozinho: exige confirmacao do operador (ver ats-core). Um 'cleared' forjado nao pode reabrir a via." },
+    "object": {
+      "type": "object",
+      "required": ["class", "conf"],
+      "additionalProperties": false,
+      "properties": {
+        "class":    { "type": "string", "enum": ["car", "truck", "motorcycle", "bicycle", "person", "animal", "debris", "unknown"] },
+        "conf":     { "type": "number", "minimum": 0, "maximum": 1 },
+        "track_id": { "type": "string", "maxLength": 32, "description": "Id de rastreio do objeto entre quadros - permite deduplicar N deteccoes do mesmo carro." },
+        "bbox_norm":{ "type": "array", "items": { "type": "number", "minimum": 0, "maximum": 1 }, "minItems": 4, "maxItems": 4 },
+        "count":    { "type": "integer", "minimum": 1 }
+      }
+    },
+    "geo": {
+      "type": "object",
+      "required": ["lat", "lon"],
+      "additionalProperties": false,
+      "properties": {
+        "lat": { "type": "number", "minimum": -90, "maximum": 90 },
+        "lon": { "type": "number", "minimum": -180, "maximum": 180 },
+        "accuracy_m": { "type": "number", "minimum": 0 }
+      }
+    },
+    "track": {
+      "type": "object",
+      "required": ["section_id"],
+      "additionalProperties": false,
+      "properties": {
+        "section_id":     { "type": "string", "maxLength": 32, "description": "Secao de via afetada. Chave de juncao com o modelo topologico do ATS." },
+        "chainage_m":     { "type": "number", "minimum": 0, "description": "Estaqueamento (posicao linear na secao)." },
+        "gauge_margin_m": { "type": "number", "description": "Folga ate o gabarito dinamico. Negativo = ja dentro do gabarito." },
+        "direction":      { "type": "string", "enum": ["up", "down", "both"] }
+      }
+    },
+    "detector": {
+      "type": "object",
+      "required": ["model", "model_version", "infer_ms"],
+      "additionalProperties": false,
+      "description": "Proveniencia do modelo. Um regulador (ARTESP/EMTU) ou uma investigacao de acidente vai perguntar qual versao de modelo tomou a decisao - sem isso o evento nao e auditavel.",
+      "properties": {
+        "model":         { "type": "string", "maxLength": 64 },
+        "model_version": { "type": "string", "maxLength": 32 },
+        "infer_ms":      { "type": "number", "minimum": 0 },
+        "frame_ts":      { "type": "string", "format": "date-time" },
+        "pipeline":      { "type": "string", "maxLength": 32 }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Ponteiro para o clipe retido na borda. Modelo PULL: o CCO busca so quando o operador solicita.",
+      "properties": {
+        "ref":       { "type": "string", "maxLength": 160 },
+        "ttl_s":     { "type": "integer", "minimum": 0 },
+        "retrieval": { "type": "string", "enum": ["pull"] },
+        "redacted":  { "type": "boolean", "description": "true = faces/placas ja borradas na borda (LGPD art. 6, minimizacao)." }
+      }
+    },
+    "dwell_ms": { "type": "integer", "minimum": 0, "description": "Ha quanto tempo a condicao persiste. Filtra deteccao transitoria de 1 quadro." }
+  }
+}
