@@ -316,10 +316,10 @@ interpretado como "tudo bem".
 
 ---
 
-## 7. Limites conhecidos desta fase
+## 7. Limites conhecidos
 
 Ditos explicitamente, porque um documento de arquitetura que só lista virtudes
-não é útil para planejar a Fase 2:
+não é útil para planejar a Fase 2.
 
 1. **O núcleo vital SIL 4 não existe aqui, por construção.** Este repositório é
    inteiro de Integridade Básica. Intertravamento e ATP são hardware/software
@@ -328,10 +328,21 @@ não é útil para planejar a Fase 2:
    Fase 2 traz TimescaleDB e barramento durável (NATS JetStream ou Kafka).
 3. **`ats-core` é instância única.** A eleição de líder com fencing descrita em
    §1.3 está especificada, não implementada.
-4. **NTCIP 1202 é emitido, não transportado.** Os objetos MIB são gerados
-   corretamente, mas não há camada SNMP — a Fase 1 fecha o laço contra emulador
-   (HIL), conforme o roadmap.
+4. **O HIL NTCIP é software.** A máquina de estados respeita as restrições da
+   norma e fecha a malha, mas o transporte é MQTT dedicado, não SNMPv3
+   autenticado, e o agente SNMP serve apenas leitura de estado. Hardware real da
+   CET-Santos é Fase 2.
 5. **mTLS não está ativo na bancada.** A autenticação por assinatura Ed25519
-   está; o certificado de transporte entra com a PKI da Fase 2.
+   está, nos dois sentidos; o certificado de transporte entra com a PKI da
+   Fase 2.
 6. **Modelo de topologia estático.** Substituído na Fase 2 pelo modelo importado
    do sistema de intertravamento, atrás da mesma interface.
+7. **O detector é clássico, não uma rede treinada.** A cadeia geométrica está
+   validada e transfere; os pesos exigem dado de campo rotulado. O backend ONNX
+   existe (`RAILSENTINEL_ONNX_MODEL`) mas não foi exercitado com modelo de
+   domínio, e a latência medida não representa TensorRT no Orin.
+8. **Cena de visão sintética.** Iluminação, chuva, contraluz da orla e oclusão
+   real são Fase 2.
+9. **Estabilidade validada para 3 composições na L2.** A análise modal
+   generaliza para N; os números empíricos, não. Frota diferente exige nova
+   varredura de ganhos.

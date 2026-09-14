@@ -16,25 +16,34 @@ python3 -m venv .venv
 .venv/bin/pip install -r edge/jetson_sim/requirements.txt
 ```
 
-## Execução (4 terminais)
+## Execução (5 terminais)
 
 ```bash
 npm run brokers       # 1883 campo · 1884 núcleo
-npm run gateway       # conduíte IEC 62443
+npm run gateway       # conduíte IEC 62443 (ascendente + descendente)
 npm run ats           # ATS (Integridade Básica)
+npm run ntcip         # HIL: 5 controladores semafóricos emulados
 npm run operator      # IHM em http://localhost:8080
 ```
 
-Frota opcional, para exercitar headway e TSP:
+Frota em malha fechada (consome os comandos de regulação do CCO):
 
 ```bash
 npm run fleet
 ```
 
+## Bancos de evidência
+
+```bash
+npm run stability                                   # análise modal + simulação
+.venv/bin/python edge/jetson_sim/bench_vision.py    # pipeline de inferência
+```
+
 ## Cenários
 
 ```bash
-npm run sim                                                    # invasão de via
+npm run sim                                                        # invasão (sintética)
+.venv/bin/python edge/jetson_sim/edge_node.py --scenario vision    # pipeline real sobre pixels
 .venv/bin/python edge/jetson_sim/edge_node.py --scenario degraded  # fail-visible
 .venv/bin/python edge/jetson_sim/edge_node.py --scenario spoof     # falsificação
 .venv/bin/python edge/jetson_sim/edge_node.py --scenario loop      # contínuo
@@ -68,7 +77,8 @@ Visíveis no painel de auditoria da IHM.
 ## Testes
 
 ```bash
-npm test    # 90 testes
+npm test                                              # 117 testes (TypeScript)
+.venv/bin/python edge/jetson_sim/test_vision.py       # 16 testes (pipeline de visão)
 ```
 
 Cobertura por área: serialização canônica e assinatura, validação de schema,

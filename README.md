@@ -3,9 +3,21 @@
 Middleware IIoT e ATS para o Centro de Controle Operacional de próxima geração
 do **VLT da Baixada Santista**.
 
-**Fase 1 — Middleware e Simulação (TRL 3→5).** Bancada executável do barramento
-de mensageria, dos algoritmos de supervisão e da partição de segurança
-normativa, conforme o roadmap do projeto.
+**Fase 1 — Middleware e Simulação (TRL 3→5): concluída.** Barramento de
+mensageria, algoritmos de supervisão em malha fechada, HIL NTCIP 1202, pipeline
+de inferência de borda e partição de segurança normativa — com evidência
+quantitativa de estabilidade em [`docs/ESTABILIDADE.md`](docs/ESTABILIDADE.md).
+
+| marco do roadmap | estado |
+|---|---|
+| Ingestão simulada em barramento MQTT | ✅ |
+| Algoritmos de ATS matematicamente estáveis | ✅ ρ = 0,708, margem 1,72× |
+| Emulador NTCIP 1202 em malha fechada (HIL) | ✅ |
+| Pipeline de inferência de borda | ✅ p95 4,1 ms, erro lateral p95 7,3 cm |
+| Pacote `software-alpha` | ✅ |
+
+Ressalvas em [`ESTABILIDADE.md §4`](docs/ESTABILIDADE.md#4-ressalvas) e
+[`ARQUITETURA.md §7`](docs/ARQUITETURA.md#7-limites-conhecidos).
 
 ---
 
@@ -33,7 +45,10 @@ documentação.
 | `services/ats-core` | SafetyGuard (EN 50716), regulação de headway, TSP NTCIP 1202, tratamento de invasão |
 | `services/operator-api` | Projeção de estado, IHM via SSE, exportador GTFS Realtime |
 | `edge/jetson_sim` | Simulador de nó NVIDIA Jetson Orin (Python), com cenários de ataque |
-| `tests/` | 90 testes — partição de segurança, admissão de fronteira, contratos |
+| `services/ntcip-emulator` | HIL NTCIP 1202 — máquina de estados anel-e-barreira + agente SNMP |
+| `packages/plant` | Modelo de planta da frota, compartilhado entre simulador e banco de estabilidade |
+| `edge/jetson_sim/vision` | Pipeline de inferência: detecção, rastreio, homografia, gabarito |
+| `tests/` | 133 testes — partição de segurança, fronteira, contratos, HIL, estabilidade, visão |
 
 ## Início rápido
 
@@ -113,6 +128,7 @@ borda nunca reabre a via sozinho — só a confirmação do operador.
 | [`ARQUITETURA.md`](docs/ARQUITETURA.md) | Stack, alta disponibilidade, payloads, partição EN 50716, limites conhecidos |
 | [`PAYLOADS.md`](docs/PAYLOADS.md) | Contrato de mensageria, tópicos, assinatura, filtros |
 | [`SEGURANCA.md`](docs/SEGURANCA.md) | Zonas IEC 62443, superfície de ataque, LGPD |
+| [`ESTABILIDADE.md`](docs/ESTABILIDADE.md) | Evidência do marco da Fase 1: análise modal, simulação, pipeline de visão |
 | [`RUNBOOK.md`](docs/RUNBOOK.md) | Execução, cenários, diagnóstico |
 
 ## Escopo

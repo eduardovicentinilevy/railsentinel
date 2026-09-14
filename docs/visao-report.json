@@ -1,0 +1,569 @@
+{
+  "backend": "motion-mog2",
+  "version": "1.0.0",
+  "provider": "n/a",
+  "latency": {
+    "frames": 90,
+    "mean_ms": 3.46,
+    "p50_ms": 3.45,
+    "p95_ms": 4.08,
+    "p99_ms": 4.45,
+    "max_ms": 4.45,
+    "fps_at_p95": 245.4
+  },
+  "localization": {
+    "median_error_cm": 2.97,
+    "p95_error_cm": 7.3,
+    "half_gauge_cm": 162.5
+  },
+  "intrusion": {
+    "truth_frame": 26,
+    "detected_frame": 26,
+    "lag_frames": 0
+  },
+  "false_positives": 0,
+  "verdict": "VALIDATED",
+  "caveat": "cena sintetica; robustez a condicoes reais exige dado de campo (Fase 2)",
+  "frames": [
+    {
+      "frame": 0,
+      "detections": 1,
+      "intrusions": 0,
+      "total_ms": 4.36
+    },
+    {
+      "frame": 1,
+      "detections": 1,
+      "intrusions": 0,
+      "total_ms": 4.17
+    },
+    {
+      "frame": 2,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.6
+    },
+    {
+      "frame": 3,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.92
+    },
+    {
+      "frame": 4,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.71
+    },
+    {
+      "frame": 5,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.44
+    },
+    {
+      "frame": 6,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.71
+    },
+    {
+      "frame": 7,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.34
+    },
+    {
+      "frame": 8,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.52
+    },
+    {
+      "frame": 9,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.38
+    },
+    {
+      "frame": 10,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.58
+    },
+    {
+      "frame": 11,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.82
+    },
+    {
+      "frame": 12,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.51
+    },
+    {
+      "frame": 13,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.71
+    },
+    {
+      "frame": 14,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.5
+    },
+    {
+      "frame": 15,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.51
+    },
+    {
+      "frame": 16,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.35
+    },
+    {
+      "frame": 17,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.46
+    },
+    {
+      "frame": 18,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.53
+    },
+    {
+      "frame": 19,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.23
+    },
+    {
+      "frame": 20,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.48
+    },
+    {
+      "frame": 21,
+      "detections": 1,
+      "intrusions": 0,
+      "total_ms": 3.45
+    },
+    {
+      "frame": 22,
+      "detections": 1,
+      "intrusions": 0,
+      "total_ms": 3.57
+    },
+    {
+      "frame": 23,
+      "detections": 2,
+      "intrusions": 0,
+      "total_ms": 3.52
+    },
+    {
+      "frame": 24,
+      "detections": 1,
+      "intrusions": 0,
+      "total_ms": 3.63
+    },
+    {
+      "frame": 25,
+      "detections": 1,
+      "intrusions": 0,
+      "total_ms": 3.45
+    },
+    {
+      "frame": 26,
+      "detections": 2,
+      "intrusions": 1,
+      "total_ms": 3.55
+    },
+    {
+      "frame": 27,
+      "detections": 2,
+      "intrusions": 1,
+      "total_ms": 3.49
+    },
+    {
+      "frame": 28,
+      "detections": 2,
+      "intrusions": 1,
+      "total_ms": 3.52
+    },
+    {
+      "frame": 29,
+      "detections": 1,
+      "intrusions": 1,
+      "total_ms": 3.72
+    },
+    {
+      "frame": 30,
+      "detections": 1,
+      "intrusions": 1,
+      "total_ms": 4.42
+    },
+    {
+      "frame": 31,
+      "detections": 1,
+      "intrusions": 1,
+      "total_ms": 3.87
+    },
+    {
+      "frame": 32,
+      "detections": 1,
+      "intrusions": 1,
+      "total_ms": 3.76
+    },
+    {
+      "frame": 33,
+      "detections": 1,
+      "intrusions": 1,
+      "total_ms": 4.08
+    },
+    {
+      "frame": 34,
+      "detections": 1,
+      "intrusions": 1,
+      "total_ms": 3.56
+    },
+    {
+      "frame": 35,
+      "detections": 1,
+      "intrusions": 1,
+      "total_ms": 3.5
+    },
+    {
+      "frame": 36,
+      "detections": 1,
+      "intrusions": 1,
+      "total_ms": 3.57
+    },
+    {
+      "frame": 37,
+      "detections": 1,
+      "intrusions": 1,
+      "total_ms": 3.53
+    },
+    {
+      "frame": 38,
+      "detections": 1,
+      "intrusions": 1,
+      "total_ms": 3.42
+    },
+    {
+      "frame": 39,
+      "detections": 1,
+      "intrusions": 1,
+      "total_ms": 3.57
+    },
+    {
+      "frame": 40,
+      "detections": 1,
+      "intrusions": 1,
+      "total_ms": 3.16
+    },
+    {
+      "frame": 41,
+      "detections": 1,
+      "intrusions": 1,
+      "total_ms": 3.36
+    },
+    {
+      "frame": 42,
+      "detections": 1,
+      "intrusions": 1,
+      "total_ms": 3.64
+    },
+    {
+      "frame": 43,
+      "detections": 1,
+      "intrusions": 1,
+      "total_ms": 3.32
+    },
+    {
+      "frame": 44,
+      "detections": 1,
+      "intrusions": 1,
+      "total_ms": 3.39
+    },
+    {
+      "frame": 45,
+      "detections": 1,
+      "intrusions": 1,
+      "total_ms": 3.89
+    },
+    {
+      "frame": 46,
+      "detections": 1,
+      "intrusions": 1,
+      "total_ms": 3.31
+    },
+    {
+      "frame": 47,
+      "detections": 1,
+      "intrusions": 1,
+      "total_ms": 3.29
+    },
+    {
+      "frame": 48,
+      "detections": 1,
+      "intrusions": 1,
+      "total_ms": 3.21
+    },
+    {
+      "frame": 49,
+      "detections": 1,
+      "intrusions": 1,
+      "total_ms": 3.58
+    },
+    {
+      "frame": 50,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.14
+    },
+    {
+      "frame": 51,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.11
+    },
+    {
+      "frame": 52,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.32
+    },
+    {
+      "frame": 53,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.07
+    },
+    {
+      "frame": 54,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.14
+    },
+    {
+      "frame": 55,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.21
+    },
+    {
+      "frame": 56,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.55
+    },
+    {
+      "frame": 57,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.23
+    },
+    {
+      "frame": 58,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.13
+    },
+    {
+      "frame": 59,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.45
+    },
+    {
+      "frame": 60,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.18
+    },
+    {
+      "frame": 61,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.08
+    },
+    {
+      "frame": 62,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.21
+    },
+    {
+      "frame": 63,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.19
+    },
+    {
+      "frame": 64,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.17
+    },
+    {
+      "frame": 65,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.28
+    },
+    {
+      "frame": 66,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.24
+    },
+    {
+      "frame": 67,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.24
+    },
+    {
+      "frame": 68,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.42
+    },
+    {
+      "frame": 69,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.14
+    },
+    {
+      "frame": 70,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.14
+    },
+    {
+      "frame": 71,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.18
+    },
+    {
+      "frame": 72,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 4.45
+    },
+    {
+      "frame": 73,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.51
+    },
+    {
+      "frame": 74,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.5
+    },
+    {
+      "frame": 75,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.53
+    },
+    {
+      "frame": 76,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.45
+    },
+    {
+      "frame": 77,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.27
+    },
+    {
+      "frame": 78,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.23
+    },
+    {
+      "frame": 79,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.49
+    },
+    {
+      "frame": 80,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.47
+    },
+    {
+      "frame": 81,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.44
+    },
+    {
+      "frame": 82,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.22
+    },
+    {
+      "frame": 83,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.35
+    },
+    {
+      "frame": 84,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.15
+    },
+    {
+      "frame": 85,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.27
+    },
+    {
+      "frame": 86,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 2.93
+    },
+    {
+      "frame": 87,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.13
+    },
+    {
+      "frame": 88,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.3
+    },
+    {
+      "frame": 89,
+      "detections": 0,
+      "intrusions": 0,
+      "total_ms": 3.4
+    }
+  ]
+}
