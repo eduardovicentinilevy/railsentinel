@@ -1,0 +1,7 @@
+{
+  "name": "@railsentinel/ingest-gateway",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/main.js",
+  "dependencies": { "@railsentinel/contracts": "*", "mqtt": "^5.10.3" }
+}
