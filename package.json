@@ -28,7 +28,8 @@
     "test": "npm run build && node --test --experimental-strip-types tests/*.test.ts",
     "fleet": "node --experimental-strip-types tools/fleet-sim.ts",
     "ntcip": "node services/ntcip-emulator/dist/main.js",
-    "stability": "npm run build && node --experimental-strip-types tools/stability-bench.ts"
+    "stability": "npm run build && node --experimental-strip-types tools/stability-bench.ts",
+    "stability:report": "npm run build && node --experimental-strip-types tools/stability-bench.ts --write"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

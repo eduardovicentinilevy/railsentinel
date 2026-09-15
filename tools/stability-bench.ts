@@ -350,8 +350,19 @@ function main(): void {
     verdict: verdict ? 'STABLE' : 'NOT_STABLE',
     trace: closed[0]!.samples,
   };
-  writeFileSync('docs/estabilidade-report.json', JSON.stringify(report, null, 2));
-  console.log('   relatorio: docs/estabilidade-report.json');
+  // O relatorio so e escrito sob --write.
+  //
+  // Rodar o banco e uma acao de VERIFICACAO e acontece a toda revisao; regerar
+  // o artefato de evidencia e uma acao DELIBERADA. Escrever sempre fazia toda
+  // verificacao sujar a arvore com ruido de medicao - latencias de relogio de
+  // parede e carimbo de tempo - e poluia o historico com commits que nao mudam
+  // nenhuma conclusao.
+  if (process.argv.includes('--write')) {
+    writeFileSync('docs/estabilidade-report.json', JSON.stringify(report, null, 2));
+    console.log('   relatorio regravado: docs/estabilidade-report.json');
+  } else {
+    console.log('   (use --write para regravar docs/estabilidade-report.json)');
+  }
 
   process.exit(verdict ? 0 : 1);
 }

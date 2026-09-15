@@ -29,6 +29,10 @@ from vision.tracker import iou  # noqa: E402
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--json", default="docs/visao-report.json")
+    # Mesma razao do banco de estabilidade: verificar e rotineiro, regerar o
+    # artefato de evidencia e deliberado. Sem isso, toda checagem sujava a
+    # arvore com latencias que variam com a carga da maquina.
+    ap.add_argument("--write", action="store_true", help="regrava o relatorio JSON")
     ap.add_argument("--frames", type=int, default=90)
     args = ap.parse_args()
 
@@ -143,9 +147,12 @@ def main() -> int:
         "caveat": "cena sintetica; robustez a condicoes reais exige dado de campo (Fase 2)",
         "frames": frames_out,
     }
-    Path(args.json).parent.mkdir(parents=True, exist_ok=True)
-    Path(args.json).write_text(json.dumps(report, indent=2))
-    print(f"   relatorio: {args.json}")
+    if args.write:
+        Path(args.json).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.json).write_text(json.dumps(report, indent=2))
+        print(f"   relatorio regravado: {args.json}")
+    else:
+        print(f"   (use --write para regravar {args.json})")
     return 0 if verdict else 1
 
 
