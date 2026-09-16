@@ -319,30 +319,45 @@ interpretado como "tudo bem".
 ## 7. Limites conhecidos
 
 Ditos explicitamente, porque um documento de arquitetura que só lista virtudes
-não é útil para planejar a Fase 2.
+não é útil para planejar a fase seguinte.
 
 1. **O núcleo vital SIL 4 não existe aqui, por construção.** Este repositório é
    inteiro de Integridade Básica. Intertravamento e ATP são hardware/software
    certificado separado, na Zona Interna Vital.
-2. **Sem persistência.** O estado vive em memória; reinício perde o histórico. A
-   Fase 2 traz TimescaleDB e barramento durável (NATS JetStream ou Kafka).
-3. **`ats-core` é instância única.** A eleição de líder com fencing descrita em
-   §1.3 está especificada, não implementada.
+2. **~~Sem persistência~~ — resolvido na Fase 2.** Historiador PostgreSQL
+   (`packages/historian`, `docs/PERSISTENCIA.md`), idempotente via
+   `envelope_id`. TimescaleDB continua indisponível nesta bancada (extensão
+   exige repositório apt externo); o schema já está pronto para a migração.
+3. **~~`ats-core` instância única~~ — resolvido na Fase 2.** Eleição de líder
+   com fencing sobre PostgreSQL (`packages/leader-election`, `docs/HA.md`).
+   Verificado ao vivo: duas instâncias, `kill -9` na líder, failover em menos
+   de `leaseDurationMs + retryIntervalMs`. O coordenador continua sendo um
+   único PostgreSQL, não um cluster Raft/etcd dedicado — ver ressalvas de
+   `docs/HA.md`.
 4. **O HIL NTCIP é software.** A máquina de estados respeita as restrições da
-   norma e fecha a malha, mas o transporte é MQTT dedicado, não SNMPv3
-   autenticado, e o agente SNMP serve apenas leitura de estado. Hardware real da
-   CET-Santos é Fase 2.
-5. **mTLS não está ativo na bancada.** A autenticação por assinatura Ed25519
-   está, nos dois sentidos; o certificado de transporte entra com a PKI da
-   Fase 2.
-6. **Modelo de topologia estático.** Substituído na Fase 2 pelo modelo importado
+   norma e fecha a malha. A leitura de estado passou a exigir **SNMPv3/USM**
+   (SHA-256 + AES) na Fase 2 — não mais community string em claro. O pedido
+   de prioridade continua chegando por canal MQTT dedicado, não SNMP SET:
+   limitação da biblioteca de agente usada (sem hook de SET transacional),
+   não do protocolo em si. SET autenticado contra o controlador **real** da
+   CET-Santos é Fase 3.
+5. **~~mTLS não está ativo~~ — resolvido na Fase 2.** PKI interna de duas
+   camadas (Root/Issuing CA), matrícula EST simplificada, revogação
+   (`packages/pki`, `docs/PKI.md`). RSA-2048, não ECDSA — decisão registrada
+   no documento, não lacuna. A Root fica em disco nesta bancada; em campo,
+   nunca (ambiente air-gapped, uso único). Sem OCSP/CRL distribuído — a
+   revogação é em memória, por processo.
+6. **Modelo de topologia estático.** Substituído na Fase 3 pelo modelo importado
    do sistema de intertravamento, atrás da mesma interface.
 7. **O detector é clássico, não uma rede treinada.** A cadeia geométrica está
    validada e transfere; os pesos exigem dado de campo rotulado. O backend ONNX
    existe (`RAILSENTINEL_ONNX_MODEL`) mas não foi exercitado com modelo de
    domínio, e a latência medida não representa TensorRT no Orin.
 8. **Cena de visão sintética.** Iluminação, chuva, contraluz da orla e oclusão
-   real são Fase 2.
+   real são Fase 3.
 9. **Estabilidade validada para 3 composições na L2.** A análise modal
    generaliza para N; os números empíricos, não. Frota diferente exige nova
    varredura de ganhos.
+10. **Fencing por epoch não é verificado a jusante.** A garantia de escritor
+    único vem do lado do publicador (só o líder do `ats-core` publica); os
+    consumidores (`operator-api`, `historian`) não comparam epochs entre si.

@@ -131,6 +131,7 @@ borda nunca reabre a via sozinho — só a confirmação do operador.
 | [`PKI.md`](docs/PKI.md) | mTLS, matrícula EST, revogação (Fase 2) |
 | [`PERSISTENCIA.md`](docs/PERSISTENCIA.md) | Historiador PostgreSQL, idempotência (Fase 2) |
 | [`HA.md`](docs/HA.md) | Eleição de líder, fencing, escritor único (Fase 2) |
+| [`NTCIP-SNMPV3.md`](docs/NTCIP-SNMPV3.md) | SNMPv3/USM no HIL, bug de MAX-ACCESS (Fase 2) |
 | [`ESTABILIDADE.md`](docs/ESTABILIDADE.md) | Evidência do marco da Fase 1: análise modal, simulação, pipeline de visão |
 | [`RUNBOOK.md`](docs/RUNBOOK.md) | Execução, cenários, diagnóstico |
 

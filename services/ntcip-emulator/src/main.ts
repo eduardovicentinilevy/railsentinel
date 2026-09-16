@@ -1,23 +1,43 @@
 import snmp from 'net-snmp';
 import mqtt from 'mqtt';
 import { SignalController, type PhaseConfig, type PriorityRequest } from './controller.js';
+import { createAuthenticatedScalarAgent, type AuthenticatedScalarAgent } from './snmpv3-agent.js';
 import { OID, COLOR_CODE } from './mib.js';
 
 /**
  * Emulador de controlador semaforico NTCIP 1202 - agente SNMP em malha fechada.
  *
- * Este e o HIL exigido pela Fase 1. O ats-core faz SNMP SET dos objetos de
- * prioridade; o emulador aplica sobre a maquina de estados respeitando verde
- * minimo, amarelo, vermelho-geral e verde maximo; e devolve o estado real por
- * SNMP GET. A malha fecha porque o CCO le de volta o que o controlador
- * efetivamente fez - que frequentemente nao e o que ele pediu.
+ * Este e o HIL exigido pela Fase 1. O pedido de prioridade chega por um canal
+ * MQTT dedicado (nao SNMP SET - ver "Canal de comando do HIL" abaixo para o
+ * motivo); o emulador aplica sobre a maquina de estados respeitando verde
+ * minimo, amarelo, vermelho-geral e verde maximo; e devolve o estado real
+ * tanto por MQTT quanto por SNMP GET autenticado (SNMPv3/USM, Fase 2) nos
+ * OIDs reais da arvore NTCIP. A malha fecha porque o CCO le de volta o que o
+ * controlador efetivamente fez - que frequentemente nao e o que ele pediu.
  *
- * Um emulador que apenas registrasse os SETs e respondesse 'ok' provaria nada.
- * O valor esta na recusa: 'verde maximo ja atingido', 'extensao pedida com a
- * fase fora de verde'. E isso que expoe se o TSP oscila.
+ * Um emulador que apenas registrasse os pedidos e respondesse 'ok' provaria
+ * nada. O valor esta na recusa: 'verde maximo ja atingido', 'extensao pedida
+ * com a fase fora de verde'. E isso que expoe se o TSP oscila.
+ *
+ * SNMPv3/USM (Fase 2): a leitura de estado agora exige autenticacao -
+ * community string em claro (SNMPv1/v2c) e inaceitavel para um objeto que
+ * controla prioridade em cruzamento urbano. O usuario e a chave de
+ * autenticacao ficam em variaveis de ambiente, nunca hardcoded; ver
+ * docs/HA.md e ARQUITETURA.md 7 para o que ainda falta (SET autenticado
+ * contra o controlador REAL da CET-Santos, nao apenas GET contra o emulador).
  */
 
 const SNMP_PORT = Number(process.env.NTCIP_PORT ?? 1161);
+
+/**
+ * Credenciais SNMPv3/USM. Vem de variavel de ambiente, nunca hardcoded -
+ * mesma disciplina das chaves de assinatura Ed25519 e da PKI (.secrets/).
+ * Os valores padrao servem so para a bancada nao exigir configuracao extra;
+ * em campo, cada implantacao provisiona a propria chave.
+ */
+const SNMP_USER = process.env.NTCIP_SNMP_USER ?? 'railsentinel-ats';
+const SNMP_AUTH_KEY = process.env.NTCIP_SNMP_AUTH_KEY ?? 'railsentinel-auth-bancada';
+const SNMP_PRIV_KEY = process.env.NTCIP_SNMP_PRIV_KEY ?? 'railsentinel-priv-bancada';
 const BUS_URL = process.env.CORE_BROKER_URL ?? 'mqtt://127.0.0.1:1884';
 const TICK_MS = Number(process.env.NTCIP_TICK_MS ?? 1000);
 const ACCEL = Number(process.env.NTCIP_ACCEL ?? 5);
@@ -50,46 +70,25 @@ bus.on('connect', () => log('info', 'conectado ao barramento (HIL)', { url: BUS_
 /** Estado do pedido corrente por controlador, montado pelos SETs sucessivos. */
 const pending = new Map<string, Partial<PriorityRequest>>();
 
-function makeAgent(port: number, ctl: SignalController) {
-  const store = new Map<string, { type: number; value: number | string }>();
+function makeAgent(port: number, ctl: SignalController): { agent: AuthenticatedScalarAgent; refresh: () => void } {
+  const scalar = createAuthenticatedScalarAgent(
+    port, Object.values(OID),
+    { user: SNMP_USER, authKey: SNMP_AUTH_KEY, privKey: SNMP_PRIV_KEY },
+    (err) => log('error', 'erro no agente SNMP', { controller: ctl.id, err: err.message }),
+  );
 
   const refresh = () => {
-    store.set(OID.prsActivePhase, { type: snmp.ObjectType.Integer, value: ctl.state.activePhase });
-    store.set(OID.prsActiveColor, { type: snmp.ObjectType.Integer, value: COLOR_CODE[ctl.state.color] });
-    store.set(OID.phaseStatusGroupGreens, { type: snmp.ObjectType.Integer, value: ctl.state.color === 'green' ? ctl.state.activePhase : 0 });
-    store.set(OID.phaseStatusGroupYellows, { type: snmp.ObjectType.Integer, value: ctl.state.color === 'yellow' ? ctl.state.activePhase : 0 });
-    store.set(OID.phaseStatusGroupReds, { type: snmp.ObjectType.Integer, value: ctl.state.color === 'all_red' ? ctl.state.activePhase : 0 });
+    scalar.setValue(OID.prsActivePhase, ctl.state.activePhase);
+    scalar.setValue(OID.prsActiveColor, COLOR_CODE[ctl.state.color]);
+    scalar.setValue(OID.phaseStatusGroupGreens, ctl.state.color === 'green' ? ctl.state.activePhase : 0);
+    scalar.setValue(OID.phaseStatusGroupYellows, ctl.state.color === 'yellow' ? ctl.state.activePhase : 0);
+    scalar.setValue(OID.phaseStatusGroupReds, ctl.state.color === 'all_red' ? ctl.state.activePhase : 0);
     const vlt = ctl.phases[0]!.phase;
-    store.set(OID.prsSecondsUntilGreen, { type: snmp.ObjectType.Integer, value: ctl.secondsUntilGreen(vlt) });
+    scalar.setValue(OID.prsSecondsUntilGreen, ctl.secondsUntilGreen(vlt));
   };
   refresh();
 
-  const agent = snmp.createAgent({ port, disableAuthorization: true }, (error: Error | null) => {
-    if (error) log('error', 'erro no agente SNMP', { controller: ctl.id, err: error.message });
-  });
-
-  const mib = agent.getMib();
-  // net-snmp exige providers declarados; usamos um handler escalar por OID.
-  for (const oid of Object.values(OID)) {
-    try {
-      mib.registerProvider({
-        name: oid.replace(/\./g, '_'),
-        type: snmp.MibProviderType.Scalar,
-        oid,
-        scalarType: snmp.ObjectType.Integer,
-        handler: (mibRequest: any) => {
-          refresh();
-          const v = store.get(oid);
-          mibRequest.done({ type: snmp.ObjectType.Integer, value: typeof v?.value === 'number' ? v.value : 0 });
-        },
-      });
-      mib.setScalarValue(oid.replace(/\./g, '_'), 0);
-    } catch {
-      // OIDs duplicados no mapa (aliases) - ignorar silenciosamente.
-    }
-  }
-
-  return { agent, store, refresh };
+  return { agent: scalar, refresh };
 }
 
 const agents = new Map<number, ReturnType<typeof makeAgent>>();
