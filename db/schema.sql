@@ -136,3 +136,21 @@ CREATE TABLE IF NOT EXISTS tsp_decisions (
   recorded_at    timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_tsp_decisions_crossing_ts ON tsp_decisions (crossing_id, decided_at DESC);
+
+-- Eleicao de lider com fencing para servicos de escritor unico (ats-core).
+--
+-- Rodar tres replicas do ats-core nao e alta disponibilidade - e falha de
+-- seguranca: tres instancias regulando a mesma linha emitiriam ajustes de
+-- dwell conflitantes para a mesma composicao (ARQUITETURA.md 1.3). Este lease
+-- garante escritor unico por 'role' (ex.: 'ats-core'), com um EPOCH que so
+-- cresce a cada nova aquisicao - o fencing token classico: mesmo que um lider
+-- deposto por pausa de GC ainda se ache lider e tente publicar, o epoch que
+-- ele carrega fica velho no instante em que outro processo assume, e qualquer
+-- consumidor que compare epochs descarta o comando atrasado.
+CREATE TABLE IF NOT EXISTS leader_lease (
+  role        text PRIMARY KEY,
+  holder      text NOT NULL,
+  epoch       bigint NOT NULL DEFAULT 0,
+  acquired_at timestamptz NOT NULL,
+  expires_at  timestamptz NOT NULL
+);

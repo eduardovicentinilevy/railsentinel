@@ -11,6 +11,7 @@
     "packages/contracts",
     "packages/pki",
     "packages/historian",
+    "packages/leader-election",
     "packages/plant",
     "services/ingest-gateway",
     "services/ats-core",

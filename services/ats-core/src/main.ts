@@ -1,4 +1,6 @@
-import mqtt from 'mqtt';
+import mqtt, { type IClientPublishOptions } from 'mqtt';
+import pg from 'pg';
+import { LeaseHolder } from '@railsentinel/leader-election';
 import {
   CORE, type HealthData, type IntrusionData, type Message, type TrainPositionData,
 } from '@railsentinel/contracts';
@@ -23,8 +25,38 @@ import { getSection } from './topology.js';
 const CORE_URL = process.env.CORE_BROKER_URL ?? 'mqtt://127.0.0.1:1884';
 const REGULATION_PERIOD_MS = Number(process.env.REGULATION_PERIOD_MS ?? 10_000);
 
+/**
+ * Eleicao de lider (Fase 2) - fecha o ponto de ARQUITETURA.md 1.3.
+ *
+ * "Rodar tres replicas do ats-core nao e alta disponibilidade - e falha de
+ * seguranca": tres instancias regulando a mesma linha emitiriam ajustes de
+ * dwell conflitantes para a mesma composicao. A partir daqui, TODA instancia
+ * do ats-core assina o barramento e processa cada mensagem normalmente -
+ * fleet registry, incidentes abertos, inibicoes de TSP ficam quentes em
+ * standby, para que o failover nao tenha lacuna de conhecimento - mas so a
+ * instancia que detem o lease de lideranca PUBLICA qualquer coisa de volta ao
+ * barramento. Uma standby que continuasse publicando "torcendo" para ainda
+ * ser lider e exatamente o cenario que a eleicao existe para impedir.
+ */
+const DATABASE_URL = process.env.DATABASE_URL ?? 'postgres://railsentinel:railsentinel_dev@127.0.0.1:5432/railsentinel';
+const INSTANCE_ID = process.env.ATS_INSTANCE_ID ?? `ats-${process.pid}-${Math.random().toString(36).slice(2, 8)}`;
+const dbPool = new pg.Pool({ connectionString: DATABASE_URL });
+dbPool.on('error', (err) => log('error', 'erro na pool de conexoes do coordenador de lideranca', { err: err.message }));
+
+const leader = new LeaseHolder(dbPool, 'ats-core', INSTANCE_ID, {
+  leaseDurationMs: Number(process.env.LEASE_DURATION_MS ?? 15_000),
+  renewIntervalMs: Number(process.env.LEASE_RENEW_MS ?? 5_000),
+  retryIntervalMs: Number(process.env.LEASE_RETRY_MS ?? 3_000),
+});
+
 const log = (lvl: string, msg: string, extra: Record<string, unknown> = {}) =>
   console.log(JSON.stringify({ t: new Date().toISOString(), svc: 'ats-core', lvl, msg, ...extra }));
+
+leader.onChange(({ isLeader, epoch }) => {
+  log('warn', isLeader ? 'ASSUMIU a lideranca - passa a publicar decisoes' : 'em STANDBY - continua processando, mas nao publica nada',
+    { instance: INSTANCE_ID, epoch });
+});
+leader.start();
 
 const guard = new SafetyGuard();
 const fleet = new FleetRegistry();
@@ -32,7 +64,14 @@ const regulator = new HeadwayRegulator();
 const tsp = new TspController(guard);
 const intrusion = new IntrusionHandler(guard, fleet, tsp);
 
-const bus = mqtt.connect(CORE_URL, { clientId: 'ats-core', clean: true, reconnectPeriod: 1000 });
+// Client id unico por instancia: duas conexoes MQTT com o mesmo client id
+// fazem o broker derrubar a mais antiga a cada nova conexao (e o que a
+// especificacao MQTT manda fazer). Antes desta correcao, duas instancias de
+// ats-core rodando lado a lado (o proprio cenario que a eleicao de lider
+// existe para suportar) entravam num ciclo de desconexao/reconexao a cada
+// poucos segundos - nao por causa da eleicao, mas porque ambas se
+// apresentavam ao broker como o mesmo cliente 'ats-core'.
+const bus = mqtt.connect(CORE_URL, { clientId: `ats-core-${INSTANCE_ID}`, clean: true, reconnectPeriod: 1000 });
 
 /** Estado de saude dos nos de borda - alimenta o principio fail-visible. */
 const edgeHealth = new Map<string, HealthData & { src: string; at: string }>();
@@ -41,7 +80,7 @@ guard.onViolation((v) => {
   // Violacao de particao e evento de seguranca funcional, nao erro de aplicacao.
   // Vai para trilha de auditoria imutavel e para o painel do operador.
   log('error', 'VIOLACAO DE PARTICAO EN 50716 barrada', v as unknown as Record<string, unknown>);
-  bus.publish(CORE.safetyViolation, JSON.stringify(v), { qos: 1 });
+  publishAsLeader(CORE.safetyViolation, JSON.stringify(v), { qos: 1 });
 });
 
 bus.on('connect', () => {
@@ -53,6 +92,21 @@ bus.on('connect', () => {
 });
 
 bus.on('error', (e) => log('error', 'erro no barramento', { err: e.message }));
+
+/**
+ * Unico caminho de escrita no barramento do nucleo. Toda publicacao de efeito
+ * do ats-core passa por aqui - o ponto que a auditoria de particao de codigo
+ * (mesmo espirito do SafetyGuard, agora para o problema de escritor unico)
+ * verifica para confirmar que nenhuma chamada a bus.publish() escapa da
+ * checagem de lideranca.
+ */
+function publishAsLeader(topic: string, payload: string, opts?: IClientPublishOptions): void {
+  if (!leader.isLeader()) {
+    log('info', 'publicacao suprimida - esta instancia esta em standby', { topic, instance: INSTANCE_ID });
+    return;
+  }
+  bus.publish(topic, payload, opts ?? {});
+}
 
 /** Mensagem ja normalizada pelo gateway, com metadados de ingestao anexados. */
 type Ingested<T> = Message<T> & { _ingest?: { latency_ms: number; gaps: number } };
@@ -131,13 +185,13 @@ function onIntrusion(msg: Ingested<IntrusionData>): void {
   }
 
   if (outcome.alarm) {
-    bus.publish(CORE.operatorAlarm, JSON.stringify(outcome.alarm), { qos: 1 });
+    publishAsLeader(CORE.operatorAlarm, JSON.stringify(outcome.alarm), { qos: 1 });
   }
   if (outcome.restriction) {
-    bus.publish(CORE.trackRestriction, JSON.stringify(outcome.restriction), { qos: 1, retain: true });
+    publishAsLeader(CORE.trackRestriction, JSON.stringify(outcome.restriction), { qos: 1, retain: true });
   }
   for (const rev of outcome.tspRevocations) {
-    bus.publish(CORE.tspDecision, JSON.stringify(rev), { qos: 1 });
+    publishAsLeader(CORE.tspDecision, JSON.stringify(rev), { qos: 1 });
   }
 
   const decisionMs = performance.now() - t0;
@@ -178,7 +232,7 @@ function onHealth(msg: Ingested<HealthData>): void {
     });
     if (msg.data.status === 'offline' || msg.data.status === 'fault') {
       // Fail-visible: um no cego nao pode ser confundido com "via livre".
-      bus.publish(CORE.operatorAlarm, JSON.stringify({
+      publishAsLeader(CORE.operatorAlarm, JSON.stringify({
         alarm_id: `hb-${Date.now()}`,
         severity: 'major',
         title: `Cobertura de deteccao perdida: ${msg.env.src}`,
@@ -209,11 +263,11 @@ function onPosition(msg: Ingested<TrainPositionData>): void {
   const evaluation = tsp.evaluate(train, msg.env.class, msg.env.id);
   if (evaluation.decision) {
     const ntcip = tsp.toNtcip(evaluation.decision);
-    bus.publish(CORE.tspDecision, JSON.stringify(evaluation.decision), { qos: 1 });
+    publishAsLeader(CORE.tspDecision, JSON.stringify(evaluation.decision), { qos: 1 });
 
     // Emissao para o controlador (HIL na Fase 1, SNMPv3 em campo na Fase 2).
     const strategyNumber = ntcip?.mib_objects['priorityRequest.priorityRequestStrategyNumber'] ?? 1;
-    bus.publish(`ntcip/${evaluation.decision.crossing_id}/priority_request`, JSON.stringify({
+    publishAsLeader(`ntcip/${evaluation.decision.crossing_id}/priority_request`, JSON.stringify({
       phase: ntcip?.mib_objects['priorityRequest.priorityRequestPhase'],
       strategy: strategyNumber,
       vehicleClass: 6,
@@ -239,7 +293,7 @@ function onOperatorCommand(topic: string, cmd: Record<string, unknown>): void {
       operator: cmd.operator_id ?? 'desconhecido',
     });
     if (result.released) {
-      bus.publish(CORE.trackRestriction, JSON.stringify({ restriction_id: '', section_id: sectionId, cleared: true, cleared_by: cmd.operator_id, cleared_at: new Date().toISOString() }), { qos: 1, retain: true });
+      publishAsLeader(CORE.trackRestriction, JSON.stringify({ restriction_id: '', section_id: sectionId, cleared: true, cleared_by: cmd.operator_id, cleared_at: new Date().toISOString() }), { qos: 1, retain: true });
       publishSystemState();
     }
   }
@@ -282,7 +336,7 @@ setInterval(() => {
     for (const cmd of cmds) {
       if (!guard.authorize('adjust_dwell_time', 'basic', `reg-${cmd.train_id}`).permitted) continue;
       if (Math.abs(cmd.dwell_delta_s) < 3 && cmd.coast_pct === 0) continue; // nada material a comandar
-      bus.publish(`core/cmd/train/${cmd.train_id}/regulation`, JSON.stringify({ ...cmd, line }), { qos: 1 });
+      publishAsLeader(`core/cmd/train/${cmd.train_id}/regulation`, JSON.stringify({ ...cmd, line }), { qos: 1 });
       log('info', 'ajuste de regulacao emitido', {
         line, train: cmd.train_id, dwell_s: cmd.dwell_s, delta_s: cmd.dwell_delta_s,
         coast_pct: cmd.coast_pct, headway_error_s: cmd.headway_error_s, setpoint_s: cmd.setpoint_s,
@@ -311,9 +365,19 @@ function publishSystemState(): void {
     edge_nodes: [...edgeHealth.values()].map((h) => ({ src: h.src, status: h.status, fps: h.fps, camera_link: h.camera_link, at: h.at })),
     safety_violations_blocked: guard.violations.length,
   };
-  bus.publish(CORE.systemState, JSON.stringify(state), { qos: 0, retain: true });
+  publishAsLeader(CORE.systemState, JSON.stringify(state), { qos: 0, retain: true });
 }
 
 for (const sig of ['SIGINT', 'SIGTERM'] as const) {
-  process.on(sig, () => { log('info', 'encerrando ats-core'); bus.end(true); process.exit(0); });
+  process.on(sig, () => {
+    log('info', 'encerrando ats-core - liberando lideranca se detida');
+    // Desligamento gracioso: libera o lease imediatamente em vez de deixar o
+    // proximo lider esperar o timeout completo (ate 15s por padrao). Um
+    // encerramento planejado (deploy, reinicio) nao deveria custar o mesmo
+    // tempo de failover de um crash de verdade.
+    void leader.stop().finally(() => {
+      bus.end(true);
+      void dbPool.end().finally(() => process.exit(0));
+    });
+  });
 }

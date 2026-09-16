@@ -41,6 +41,10 @@ npm run gateway        # conduíte IEC 62443 (ascendente + descendente, mTLS se 
 npm run ats            # ATS (Integridade Básica)
 npm run ntcip          # HIL: 5 controladores semafóricos emulados
 npm run historian      # grava o barramento do núcleo no PostgreSQL
+
+# Múltiplas instâncias de ats-core (Fase 2 - eleição de líder):
+ATS_INSTANCE_ID=ats-A npm run ats
+ATS_INSTANCE_ID=ats-B npm run ats   # em outro terminal - assume automaticamente se A cair
 npm run operator       # IHM em http://localhost:8080
 ```
 

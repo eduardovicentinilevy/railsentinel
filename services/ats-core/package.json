@@ -3,5 +3,10 @@
   "version": "0.1.0",
   "type": "module",
   "main": "./dist/main.js",
-  "dependencies": { "@railsentinel/contracts": "*", "mqtt": "^5.10.3" }
+  "dependencies": {
+    "@railsentinel/contracts": "*",
+    "mqtt": "^5.10.3",
+    "@railsentinel/leader-election": "*",
+    "pg": "^8.13.1"
+  }
 }

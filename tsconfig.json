@@ -11,6 +11,9 @@
       "path": "packages/historian"
     },
     {
+      "path": "packages/leader-election"
+    },
+    {
       "path": "packages/plant"
     },
     {
