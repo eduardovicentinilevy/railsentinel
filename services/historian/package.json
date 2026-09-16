@@ -1,0 +1,7 @@
+{
+  "name": "@railsentinel/historian-service",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/main.js",
+  "dependencies": { "@railsentinel/contracts": "*", "@railsentinel/historian": "*", "mqtt": "^5.10.3", "pg": "^8.13.1" }
+}

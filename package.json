@@ -2,7 +2,7 @@
   "name": "railsentinel",
   "private": true,
   "version": "0.1.0-alpha",
-  "description": "RailSentinel — middleware IIoT/ATS de proxima geracao para o CCO do VLT da Baixada Santista (Fase 1: simulacao e middleware, TRL 3-5)",
+  "description": "RailSentinel \u2014 middleware IIoT/ATS de proxima geracao para o CCO do VLT da Baixada Santista (Fase 1: simulacao e middleware, TRL 3-5)",
   "type": "module",
   "engines": {
     "node": ">=22.0.0"
@@ -10,11 +10,13 @@
   "workspaces": [
     "packages/contracts",
     "packages/pki",
+    "packages/historian",
     "packages/plant",
     "services/ingest-gateway",
     "services/ats-core",
     "services/operator-api",
-    "services/ntcip-emulator"
+    "services/ntcip-emulator",
+    "services/historian"
   ],
   "scripts": {
     "build": "tsc --build",
@@ -31,7 +33,9 @@
     "ntcip": "node services/ntcip-emulator/dist/main.js",
     "stability": "npm run build && node --experimental-strip-types tools/stability-bench.ts",
     "stability:report": "npm run build && node --experimental-strip-types tools/stability-bench.ts --write",
-    "setup-pki": "node --experimental-strip-types tools/setup-pki.ts"
+    "setup-pki": "node --experimental-strip-types tools/setup-pki.ts",
+    "historian": "node services/historian/dist/main.js",
+    "db:migrate": "node --experimental-strip-types tools/db-migrate.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
@@ -40,7 +44,9 @@
     "typescript": "^5.7.2"
   },
   "dependencies": {
+    "@types/pg": "^8.23.1",
     "net-snmp": "^3.29.1",
-    "node-forge": "^1.4.0"
+    "node-forge": "^1.4.0",
+    "pg": "^8.23.0"
   }
 }

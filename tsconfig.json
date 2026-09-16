@@ -8,6 +8,9 @@
       "path": "packages/pki"
     },
     {
+      "path": "packages/historian"
+    },
+    {
       "path": "packages/plant"
     },
     {
@@ -21,6 +24,9 @@
     },
     {
       "path": "services/ntcip-emulator"
+    },
+    {
+      "path": "services/historian"
     }
   ]
 }

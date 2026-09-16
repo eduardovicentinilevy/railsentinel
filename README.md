@@ -128,6 +128,8 @@ borda nunca reabre a via sozinho — só a confirmação do operador.
 | [`ARQUITETURA.md`](docs/ARQUITETURA.md) | Stack, alta disponibilidade, payloads, partição EN 50716, limites conhecidos |
 | [`PAYLOADS.md`](docs/PAYLOADS.md) | Contrato de mensageria, tópicos, assinatura, filtros |
 | [`SEGURANCA.md`](docs/SEGURANCA.md) | Zonas IEC 62443, superfície de ataque, LGPD |
+| [`PKI.md`](docs/PKI.md) | mTLS, matrícula EST, revogação (Fase 2) |
+| [`PERSISTENCIA.md`](docs/PERSISTENCIA.md) | Historiador PostgreSQL, idempotência (Fase 2) |
 | [`ESTABILIDADE.md`](docs/ESTABILIDADE.md) | Evidência do marco da Fase 1: análise modal, simulação, pipeline de visão |
 | [`RUNBOOK.md`](docs/RUNBOOK.md) | Execução, cenários, diagnóstico |
 
