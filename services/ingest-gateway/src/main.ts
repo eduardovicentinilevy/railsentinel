@@ -1,6 +1,6 @@
 import mqtt from 'mqtt';
+import { existsSync, readFileSync } from 'node:fs';
 import { CORE, FIELD_SUBSCRIPTIONS, type Message } from '@railsentinel/contracts';
-import { readFileSync } from 'node:fs';
 import { DeviceRegistry } from './registry.js';
 import { AdmissionPipeline, type Verdict } from './pipeline.js';
 import { Downlink } from './downlink.js';
@@ -17,7 +17,33 @@ import { Downlink } from './downlink.js';
  * verificacao - a fronteira e um lugar so, auditavel em um lugar so.
  */
 
-const FIELD_URL = process.env.FIELD_BROKER_URL ?? 'mqtt://127.0.0.1:1883';
+/**
+ * mTLS no broker de CAMPO quando a PKI esta provisionada (Fase 2).
+ *
+ * O gateway e um dispositivo como outro qualquer do ponto de vista do broker
+ * de campo: precisa do proprio certificado (emitido em npm run setup-pki) para
+ * se autenticar. Isto e autenticacao de TRANSPORTE (o salto ate o broker); a
+ * verificacao de assinatura Ed25519 em pipeline.ts continua autenticando cada
+ * MENSAGEM individualmente, mesmo que o broker de campo seja comprometido.
+ *
+ * Sem PKI (bancada da Fase 1), o gateway cai para TCP simples na porta 1883 -
+ * o mesmo comportamento de sempre, preservado para nao quebrar quem ainda nao
+ * rodou o bootstrap.
+ */
+const PKI_DIR = process.env.PKI_DIR ?? '.secrets/pki';
+const GATEWAY_CERT_BASENAME = 'gw_core_INGEST-GATEWAY';
+const hasMtls = existsSync(`${PKI_DIR}/chain.pem`) && existsSync(`${PKI_DIR}/${GATEWAY_CERT_BASENAME}.crt.pem`);
+
+const FIELD_URL = process.env.FIELD_BROKER_URL ?? (hasMtls ? 'mqtts://127.0.0.1:8883' : 'mqtt://127.0.0.1:1883');
+const fieldTlsOptions = hasMtls
+  ? {
+      ca: readFileSync(`${PKI_DIR}/chain.pem`),
+      cert: readFileSync(`${PKI_DIR}/${GATEWAY_CERT_BASENAME}.crt.pem`),
+      key: readFileSync(`${PKI_DIR}/${GATEWAY_CERT_BASENAME}.key.pem`),
+      rejectUnauthorized: true,
+      servername: 'localhost',
+    }
+  : {};
 const CORE_URL = process.env.CORE_BROKER_URL ?? 'mqtt://127.0.0.1:1884';
 const REGISTRY_PATH = process.env.DEVICE_REGISTRY ?? '.secrets/devices.json';
 const REQUIRE_SIG = process.env.REQUIRE_SIGNATURE !== 'false';
@@ -32,8 +58,9 @@ const pipeline = new AdmissionPipeline(registry, { requireSignature: REQUIRE_SIG
 const downlink = new Downlink(JSON.parse(readFileSync(CCO_KEY_PATH, 'utf8')));
 
 log('info', 'trust store carregado', { devices: registry.size, requireSignature: REQUIRE_SIG });
+log('info', hasMtls ? 'mTLS ativo no broker de campo' : 'mTLS INATIVO - TCP simples (rode: npm run setup-pki)', { url: FIELD_URL });
 
-const field = mqtt.connect(FIELD_URL, { clientId: 'gw-field', clean: true, reconnectPeriod: 1000 });
+const field = mqtt.connect(FIELD_URL, { clientId: 'gw-core-INGEST-GATEWAY', clean: true, reconnectPeriod: 1000, ...fieldTlsOptions });
 const core = mqtt.connect(CORE_URL, { clientId: 'gw-core', clean: true, reconnectPeriod: 1000 });
 
 const stats = { accepted: 0, rejected: 0, byStage: new Map<string, number>() };

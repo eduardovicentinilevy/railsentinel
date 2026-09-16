@@ -112,7 +112,7 @@ class EdgeNode:
     MODEL = "railguard-yolo"
     MODEL_VERSION = "3.2.1"
 
-    def __init__(self, cfg: NodeConfig, broker: str, port: int) -> None:
+    def __init__(self, cfg: NodeConfig, broker: str, port: int, *, tls: dict | None = None) -> None:
         self.cfg = cfg
         self.seq = 0
         self.started = time.time()
@@ -136,7 +136,18 @@ class EdgeNode:
             )),
             qos=1, retain=True,
         )
-        self.client.on_connect = lambda c, u, f, rc, p=None: print(f"[{cfg.src}] conectado ao broker de campo (rc={rc})")
+        # mTLS (Fase 2): o dispositivo apresenta o proprio certificado X.509 ao
+        # broker de campo, emitido por 'npm run setup-pki'. Isto autentica o
+        # SALTO ate o broker - independente e complementar a assinatura Ed25519
+        # de cada mensagem, que segue autenticando fim-a-fim mesmo que o broker
+        # seja comprometido. Sem PKI, cai para TCP simples (comportamento da
+        # Fase 1), preservado para nao quebrar quem ainda nao provisionou.
+        if tls:
+            self.client.tls_set(ca_certs=tls["ca"], certfile=tls["cert"], keyfile=tls["key"])
+            self.client.tls_insecure_set(False)
+        self.client.on_connect = lambda c, u, f, rc, p=None: print(
+            f"[{cfg.src}] conectado ao broker de campo ({'mTLS' if tls else 'TCP simples'}, rc={rc})"
+        )
         self.client.connect(broker, port, keepalive=15)
         self.client.loop_start()
 
@@ -444,10 +455,23 @@ def main() -> None:
     ap.add_argument("--broker", default=os.environ.get("FIELD_BROKER_HOST", "127.0.0.1"))
     ap.add_argument("--port", type=int, default=int(os.environ.get("FIELD_BROKER_PORT", "1883")))
     ap.add_argument("--registry", default=str(REPO / ".secrets" / "edge-keys.json"))
+    ap.add_argument("--pki-dir", default=str(REPO / ".secrets" / "pki"))
     args = ap.parse_args()
 
     cfg = load_node(Path(args.registry), args.src)
-    node = EdgeNode(cfg, args.broker, args.port)
+
+    pki_dir = Path(args.pki_dir)
+    safe_id = cfg.src.replace(":", "_")
+    tls_opts = None
+    chain = pki_dir / "chain.pem"
+    cert = pki_dir / f"{safe_id}.crt.pem"
+    key = pki_dir / f"{safe_id}.key.pem"
+    if os.environ.get("FIELD_TLS", "auto") != "off" and chain.exists() and cert.exists() and key.exists():
+        tls_opts = {"ca": str(chain), "cert": str(cert), "key": str(key)}
+        if args.port == 1883:
+            args.port = int(os.environ.get("FIELD_BROKER_TLS_PORT", "8883"))
+
+    node = EdgeNode(cfg, args.broker, args.port, tls=tls_opts)
     time.sleep(0.6)
 
     stopping = False

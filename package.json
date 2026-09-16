@@ -9,6 +9,7 @@
   },
   "workspaces": [
     "packages/contracts",
+    "packages/pki",
     "packages/plant",
     "services/ingest-gateway",
     "services/ats-core",
@@ -29,14 +30,17 @@
     "fleet": "node --experimental-strip-types tools/fleet-sim.ts",
     "ntcip": "node services/ntcip-emulator/dist/main.js",
     "stability": "npm run build && node --experimental-strip-types tools/stability-bench.ts",
-    "stability:report": "npm run build && node --experimental-strip-types tools/stability-bench.ts --write"
+    "stability:report": "npm run build && node --experimental-strip-types tools/stability-bench.ts --write",
+    "setup-pki": "node --experimental-strip-types tools/setup-pki.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
+    "@types/node-forge": "^1.3.14",
     "aedes": "^0.51.3",
     "typescript": "^5.7.2"
   },
   "dependencies": {
-    "net-snmp": "^3.29.1"
+    "net-snmp": "^3.29.1",
+    "node-forge": "^1.4.0"
   }
 }
