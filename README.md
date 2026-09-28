@@ -49,8 +49,13 @@ documentação.
 | `packages/plant` | Modelo de planta da frota, compartilhado entre simulador e banco de estabilidade |
 | `edge/jetson_sim/vision` | Pipeline de inferência: detecção, rastreio, homografia, gabarito |
 | `tests/` | 133 testes — partição de segurança, fronteira, contratos, HIL, estabilidade, visão |
+| `demo/cco-dashboard.html` | Painel do operador com dados mockados — abre direto no navegador, sem stack |
 
 ## Início rápido
+
+Sem instalar nada: abra [`demo/cco-dashboard.html`](demo/cco-dashboard.html)
+direto no navegador para ver a forma do painel do operador com dados
+mockados. Para rodar o sistema de verdade:
 
 ```bash
 npm install && npm run build && npm run keys
