@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { Card } from './Card';
 import { stamp, useCcoDispatch, useCcoState } from '../state/CcoProvider';
 import { normalizeOperatorId } from '../state/reducer';
 import { activeRestrictions } from '../state/selectors';
@@ -29,20 +30,18 @@ function RestrictionCard({ restriction }: { restriction: RestrictionState }) {
 
   return (
     <div className={`restr-card${cleared ? ' cleared' : ''}`}>
-      <div className="restr-title">
-        {restriction.kind} · {restriction.sectionId}
-        {section && (
-          <span className="restr-section">
-            {' '}
-            {section.from}–{section.to}
-          </span>
-        )}
+      <div className="restr-head">
+        <span className="restr-kind">{cleared ? 'LIBERADA' : restriction.kind}</span>
+        <span className="mono restr-id">{restriction.id}</span>
       </div>
-      <div className="restr-body">{restriction.reason}</div>
-      <div className="chiprow">
-        <span className="chip mono">{restriction.id}</span>
+      <h3 className="restr-title">
+        <span className="mono">{restriction.sectionId}</span>
+        {section && ` · ${section.from}–${section.to}`}
+      </h3>
+      <p className="restr-body">{restriction.reason}</p>
+      <div className="alarm-meta">
         <span className={`chip ${restriction.cls === 'basic' ? 'basic' : 'sil'}`}>{restriction.cls === 'basic' ? 'Integridade Básica' : 'SIL'}</span>
-        <span className="chip mono">desde {restriction.createdAt}</span>
+        <span className="mono">desde {restriction.createdAt}</span>
         {held.map((t) => (
           <span className="chip held mono" key={t.id}>
             ‖ {t.id} retido
@@ -82,7 +81,7 @@ function RestrictionCard({ restriction }: { restriction: RestrictionState }) {
           {mismatch && <div className="form-error">A matrícula não confere com o operador do posto.</div>}
         </form>
       ) : (
-        <div className="chiprow">
+        <div className="alarm-actions">
           <button
             type="button"
             className="primary"
@@ -102,22 +101,19 @@ export function RestrictionsPanel() {
   const state = useCcoState();
   const active = activeRestrictions(state).length;
   return (
-    <section className="card">
-      <div className="card-head">
-        <h2>Restrições de via</h2>
-        <span className="card-head-spacer" />
-        <span className="count">
-          {active} ativa{active === 1 ? '' : 's'}
-        </span>
-      </div>
-      <div className="card-body stack">
-        {state.restrictions.map((r) => (
-          <RestrictionCard restriction={r} key={r.id} />
-        ))}
-      </div>
-      <div className="card-foot">
-        Restrições são <em>advisory</em> e nunca expiram sozinhas — só a confirmação do operador libera.
-      </div>
-    </section>
+    <Card
+      title="Restrições de via"
+      meta={`${active} ativa${active === 1 ? '' : 's'}`}
+      flush
+      note={
+        <>
+          Restrições são <em>advisory</em> e nunca expiram sozinhas — só a confirmação do operador libera.
+        </>
+      }
+    >
+      {state.restrictions.map((r) => (
+        <RestrictionCard restriction={r} key={r.id} />
+      ))}
+    </Card>
   );
 }

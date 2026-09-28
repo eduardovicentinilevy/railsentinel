@@ -93,7 +93,7 @@ export function TopBar() {
             {edge.online}/{edge.total} nós de borda
           </span>
           <OperatorSession />
-          <button type="button" className="ghost small" onClick={cycleTheme} title="Alternar tema do posto">
+          <button type="button" className="small" onClick={cycleTheme} title="Alternar tema do posto">
             Tema: {THEME_LABEL[theme]}
           </button>
           <span className="clock" aria-label="Hora local">

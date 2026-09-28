@@ -1,3 +1,4 @@
+import { Card } from './Card';
 import { useCcoState } from '../state/CcoProvider';
 import type { LogKind } from '../state/types';
 
@@ -12,15 +13,16 @@ const KIND_LABEL: Record<LogKind, string> = {
 export function EventLog() {
   const { log } = useCcoState();
   return (
-    <section className="card">
-      <div className="card-head">
-        <h2>Registro do turno</h2>
-        <span className="card-head-spacer" />
-        <span className="count">{log.length} eventos</span>
-      </div>
+    <Card
+      title="Registro do turno"
+      className="card-fill"
+      meta={`${log.length} eventos`}
+      note="Todo comando é atribuído ao operador do posto (IEC 62443 — rastreabilidade)."
+      flush
+    >
       <ol className="event-log" aria-live="polite" aria-label="Registro de eventos do turno, mais recente primeiro">
         {log.map((e) => (
-          <li key={e.seq} className={`event ${e.kind}`}>
+          <li key={e.seq} className="event">
             <span className="event-time mono">{e.at}</span>
             <span className={`event-kind ${e.kind}`}>{KIND_LABEL[e.kind]}</span>
             <span className="event-text">
@@ -30,7 +32,6 @@ export function EventLog() {
           </li>
         ))}
       </ol>
-      <div className="card-foot">Toda ação de comando é atribuída ao operador do posto (IEC 62443 — rastreabilidade).</div>
-    </section>
+    </Card>
   );
 }

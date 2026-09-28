@@ -1,4 +1,5 @@
 import type { KeyboardEvent } from 'react';
+import { Card } from './Card';
 import { STOPS } from '../data/mock';
 import { stamp, useCcoDispatch, useCcoState } from '../state/CcoProvider';
 import { activeRestrictions, formatDev, holdLabel } from '../state/selectors';
@@ -176,7 +177,7 @@ function FleetTable() {
                 <td className="r">
                   <button
                     type="button"
-                    className="ghost small"
+                    className="small"
                     disabled={!canOperate}
                     aria-label={`Chamar condutor do ${t.id} via rádio`}
                     title={canOperate ? `Chamar condutor do ${t.id} via rádio` : 'Identifique-se no topo para operar'}
@@ -200,32 +201,24 @@ function FleetTable() {
 export function Schematic() {
   const state = useCcoState();
   return (
-    <section className="card">
-      <div className="card-head">
-        <h2>Linha 2 — Loop Centro Histórico</h2>
-        <span className="card-head-spacer" />
-        <span className="count">{state.trains.length} composições</span>
-        <SimControls />
-      </div>
-      <div className="card-body schematic-wrap">
-        <LineSvg />
-        <div className="legend-row">
-          {state.trains.map((t) => (
-            <span className="legend-chip" key={t.id}>
-              <span className="legend-swatch" style={{ background: `var(${t.colorVar})` }} />
-              {t.id}
-            </span>
-          ))}
-          <span className="legend-chip">
-            <span className="legend-swatch round" style={{ background: 'var(--s-crit)' }} />
-            restrição ativa
+    <Card title="Linha 2 — Loop Centro Histórico" meta={`${state.trains.length} composições`} actions={<SimControls />}>
+      <LineSvg />
+      <div className="legend-row">
+        {state.trains.map((t) => (
+          <span className="legend-chip" key={t.id}>
+            <span className="legend-swatch" style={{ background: `var(${t.colorVar})` }} />
+            {t.id}
           </span>
-          <span className="legend-chip">
-            <span className="mono strong">‖</span> composição parada
-          </span>
-        </div>
-        <FleetTable />
+        ))}
+        <span className="legend-chip">
+          <span className="legend-swatch round" style={{ background: 'var(--s-crit)' }} />
+          restrição ativa
+        </span>
+        <span className="legend-chip">
+          <span className="mono strong">‖</span> composição parada
+        </span>
       </div>
-    </section>
+      <FleetTable />
+    </Card>
   );
 }

@@ -1,5 +1,29 @@
+import type { ReactNode } from 'react';
 import { useCcoState } from '../state/CcoProvider';
 import { activeRestrictions, alarmSummary, edgeSummary, tspServiceRate } from '../state/selectors';
+
+type Tone = 'crit' | 'good' | null;
+
+function Kpi({ label, value, unit, tone = null, flag, note }: {
+  label: string;
+  value: ReactNode;
+  unit?: string;
+  tone?: Tone;
+  flag?: ReactNode;
+  note: ReactNode;
+}) {
+  return (
+    <div className={`kpi${tone ? ` ${tone}` : ''}`}>
+      <span className="kpi-label">{label}</span>
+      <span className="kpi-value">
+        {value}
+        {unit && <span className="kpi-unit">{unit}</span>}
+      </span>
+      {flag}
+      <span className="kpi-note">{note}</span>
+    </div>
+  );
+}
 
 export function KpiRow() {
   const state = useCcoState();
@@ -11,57 +35,40 @@ export function KpiRow() {
 
   return (
     <section className="kpis" aria-label="Indicadores operacionais">
-      <div className={`kpi${alarms.unacked > 0 ? ' alert' : ''}`}>
-        <span className="kpi-label">Alarmes ativos</span>
-        <div className="kpi-value-row">
-          <span className="kpi-value">{alarms.total}</span>
-          {alarms.unacked > 0 && <span className="kpi-unit">{alarms.unacked} sem reconhecimento</span>}
-        </div>
-        <span className="kpi-note">
-          {alarms.critical} crítico · {alarms.major} maior
-        </span>
-      </div>
-      <div className="kpi">
-        <span className="kpi-label">Restrições de via</span>
-        <div className="kpi-value-row">
-          <span className="kpi-value">{restrictions}</span>
-          <span className="kpi-unit">ativa{restrictions === 1 ? '' : 's'}</span>
-        </div>
-        <span className="kpi-note">
-          {held === 0 ? 'nenhuma composição retida' : `${held} composição${held === 1 ? '' : 'ões'} retida${held === 1 ? '' : 's'}`}
-        </span>
-      </div>
-      <div className="kpi">
-        <span className="kpi-label">Atendimento TSP</span>
-        <div className="kpi-value-row">
-          <span className="kpi-value">{tsp === null ? '—' : Math.round(tsp * 100)}</span>
-          <span className="kpi-unit">%</span>
-        </div>
-        <span className="kpi-delta pos">▲ 4pp turno anterior</span>
-      </div>
-      <div className="kpi">
-        <span className="kpi-label">Erro RMS de headway</span>
-        <div className="kpi-value-row">
-          <span className="kpi-value">38</span>
-          <span className="kpi-unit">s</span>
-        </div>
-        <span className="kpi-delta pos">▼ 45% vs. malha aberta</span>
-      </div>
-      <div className="kpi">
-        <span className="kpi-label">Nós de borda</span>
-        <div className="kpi-value-row">
-          <span className="kpi-value">{edge.online}</span>
-          <span className="kpi-unit">/ {edge.total} online</span>
-        </div>
-        <span className="kpi-note">{edge.offline.map((n) => n.id).join(', ') || 'cobertura completa'}</span>
-      </div>
-      <div className="kpi feature">
-        <span className="kpi-label">Violações EN 50716</span>
-        <div className="kpi-value-row">
-          <span className="kpi-value good">0</span>
-        </div>
-        <span className="kpi-note">partição íntegra neste turno</span>
-      </div>
+      <Kpi
+        label="Alarmes ativos"
+        value={alarms.total}
+        tone={alarms.unacked > 0 ? 'crit' : null}
+        flag={alarms.unacked > 0 && <span className="kpi-flag crit">{alarms.unacked} sem reconhecimento</span>}
+        note={`${alarms.critical} crítico · ${alarms.major} maior`}
+      />
+      <Kpi
+        label="Restrições de via"
+        value={restrictions}
+        unit={restrictions === 1 ? 'ativa' : 'ativas'}
+        tone={held > 0 ? 'crit' : null}
+        flag={held > 0 && <span className="kpi-flag crit">{held === 1 ? '1 composição retida' : `${held} composições retidas`}</span>}
+        note={held === 0 ? 'nenhuma composição retida' : 'aguardando liberação do operador'}
+      />
+      <Kpi
+        label="Atendimento TSP"
+        value={tsp === null ? '—' : Math.round(tsp * 100)}
+        unit="%"
+        note={<span className="kpi-trend">▲ 4 pp vs. turno anterior</span>}
+      />
+      <Kpi
+        label="Erro RMS de headway"
+        value={38}
+        unit="s"
+        note={<span className="kpi-trend">▼ 45% vs. malha aberta</span>}
+      />
+      <Kpi
+        label="Nós de borda"
+        value={edge.online}
+        unit={`/ ${edge.total}`}
+        note={edge.offline.length ? `${edge.offline.map((n) => n.id).join(', ')} offline` : 'cobertura completa'}
+      />
+      <Kpi label="Violações EN 50716" value={0} tone="good" note="SafetyGuard ativo · partição íntegra" />
     </section>
   );
 }

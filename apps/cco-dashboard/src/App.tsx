@@ -4,7 +4,6 @@ import { EventLog } from './components/EventLog';
 import { Footer } from './components/Footer';
 import { KpiRow } from './components/KpiRow';
 import { RestrictionsPanel } from './components/RestrictionsPanel';
-import { SafetyAuditCard } from './components/SafetyAuditCard';
 import { Schematic } from './components/Schematic';
 import { Sparkline } from './components/Sparkline';
 import { TopBar } from './components/TopBar';
@@ -28,7 +27,6 @@ export function App() {
             <AlarmsPanel />
             <RestrictionsPanel />
             <EventLog />
-            <SafetyAuditCard />
           </div>
         </main>
         <Footer />

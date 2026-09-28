@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState, type PointerEvent } from 'react';
+import { Card } from './Card';
 import { TRAINS } from '../data/mock';
 import { useElementWidth } from '../hooks/useElementWidth';
 import { useCcoState } from '../state/CcoProvider';
@@ -75,99 +76,97 @@ export function Sparkline() {
   const tipLeft = Math.min(W - 130, Math.max(0, crosshairX + 10));
 
   return (
-    <section className="card">
-      <div className="card-head">
-        <h2>Desvio de tabela horária — últimos {WINDOW_MIN} min</h2>
-        <span className="card-head-spacer" />
-        <span className="count">setpoint 474s · ciclo/3</span>
-      </div>
-      <div className="card-body">
-        <div className="spark-legend">
-          {series.map((s) => (
-            <span className="legend-chip" key={s.id}>
-              <span className="legend-swatch" style={{ background: `var(${s.colorVar})` }} />
-              {s.id}
-            </span>
-          ))}
-          <span className="spark-polarity">
-            <span style={{ color: 'var(--d-late)' }}>▲</span> atrasado · <span style={{ color: 'var(--d-early)' }}>▼</span> adiantado
+    <Card
+      title={`Desvio de tabela horária — últimos ${WINDOW_MIN} min`}
+      meta="setpoint 474 s"
+      note={
+        <>
+          Regulador Kp=0.51 Ki=0.017 · ρ modal = 0.708 · fonte: <span className="mono">docs/ESTABILIDADE.md</span>
+        </>
+      }
+    >
+      <div className="spark-legend">
+        {series.map((s) => (
+          <span className="legend-chip" key={s.id}>
+            <span className="legend-swatch" style={{ background: `var(${s.colorVar})` }} />
+            {s.id}
           </span>
-        </div>
-        <div className="spark-wrap" ref={wrapRef}>
-          <svg
-            className="spark"
-            width={W}
-            height={H}
-            viewBox={`0 0 ${W} ${H}`}
-            onPointerMove={handleMove}
-            onPointerLeave={() => setHover(null)}
-            role="img"
-            aria-label="Desvio de tabela horária por composição nos últimos 40 minutos"
-          >
-            {gridValues.map((gv) => {
-              const gy = yFor(gv);
-              return (
-                <g key={gv}>
-                  <line className={gv === 0 ? 'spark-zero' : 'spark-grid'} x1={PAD_L} y1={gy} x2={W - PAD_R} y2={gy} />
-                  <text className="spark-axis-label" x={PAD_L - 6} y={gy + 3} textAnchor="end">
-                    {signed(gv)}s
-                  </text>
-                </g>
-              );
-            })}
-            {[0, 10, 20, 30, 40].map((m) => (
-              <text
-                key={m}
-                className="spark-axis-label"
-                x={xFor(((WINDOW_MIN - m) / WINDOW_MIN) * (N - 1))}
-                y={H - 6}
-                textAnchor={m === 0 ? 'end' : 'middle'}
-              >
-                {m === 0 ? 'agora' : `-${m} min`}
-              </text>
-            ))}
+        ))}
+        <span className="spark-polarity">
+          <span style={{ color: 'var(--d-late)' }}>▲</span> atrasado · <span style={{ color: 'var(--d-early)' }}>▼</span> adiantado
+        </span>
+      </div>
+      <div className="spark-wrap" ref={wrapRef}>
+        <svg
+          className="spark"
+          width={W}
+          height={H}
+          viewBox={`0 0 ${W} ${H}`}
+          onPointerMove={handleMove}
+          onPointerLeave={() => setHover(null)}
+          role="img"
+          aria-label="Desvio de tabela horária por composição nos últimos 40 minutos"
+        >
+          {gridValues.map((gv) => {
+            const gy = yFor(gv);
+            return (
+              <g key={gv}>
+                <line className={gv === 0 ? 'spark-zero' : 'spark-grid'} x1={PAD_L} y1={gy} x2={W - PAD_R} y2={gy} />
+                <text className="spark-axis-label" x={PAD_L - 6} y={gy + 3} textAnchor="end">
+                  {signed(gv)}s
+                </text>
+              </g>
+            );
+          })}
+          {[0, 10, 20, 30, 40].map((m) => (
+            <text
+              key={m}
+              className="spark-axis-label"
+              x={xFor(((WINDOW_MIN - m) / WINDOW_MIN) * (N - 1))}
+              y={H - 6}
+              textAnchor={m === 0 ? 'end' : 'middle'}
+            >
+              {m === 0 ? 'agora' : `-${m} min`}
+            </text>
+          ))}
 
-            {series.map((s) => {
-              const d = s.vals.map((v, i) => `${i === 0 ? 'M' : 'L'}${xFor(i).toFixed(1)} ${yFor(v).toFixed(1)}`).join(' ');
-              const dimmed = selectedTrain !== null && selectedTrain !== s.id;
-              return (
-                <g key={s.id} opacity={dimmed ? 0.22 : 1}>
-                  <path
-                    d={d}
-                    fill="none"
-                    stroke={`var(${s.colorVar})`}
-                    strokeWidth={selectedTrain === s.id ? 2.5 : 2}
-                    strokeLinejoin="round"
-                    strokeLinecap="round"
-                  />
-                  <circle cx={xFor(N - 1)} cy={yFor(s.vals[N - 1])} r={4} fill={`var(${s.colorVar})`} stroke="var(--surface)" strokeWidth={2} />
-                </g>
-              );
-            })}
+          {series.map((s) => {
+            const d = s.vals.map((v, i) => `${i === 0 ? 'M' : 'L'}${xFor(i).toFixed(1)} ${yFor(v).toFixed(1)}`).join(' ');
+            const dimmed = selectedTrain !== null && selectedTrain !== s.id;
+            return (
+              <g key={s.id} opacity={dimmed ? 0.22 : 1}>
+                <path
+                  d={d}
+                  fill="none"
+                  stroke={`var(${s.colorVar})`}
+                  strokeWidth={selectedTrain === s.id ? 2.5 : 2}
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                />
+                <circle cx={xFor(N - 1)} cy={yFor(s.vals[N - 1])} r={4} fill={`var(${s.colorVar})`} stroke="var(--surface)" strokeWidth={2} />
+              </g>
+            );
+          })}
 
-            <line className={`spark-crosshair${hover !== null ? ' show' : ''}`} x1={crosshairX} y1={PAD_T} x2={crosshairX} y2={H - PAD_B} />
-          </svg>
-          <div className={`spark-tooltip${hover !== null ? ' show' : ''}`} style={{ left: tipLeft, top: 6 }}>
-            {hover !== null && (
-              <>
-                <div className="spark-tooltip-head">{minsAgo === 0 ? 'agora' : `há ${minsAgo} min`}</div>
-                {series.map((s) => (
-                  <div key={s.id} className="spark-tooltip-row">
-                    <span>
-                      <span className="legend-swatch" style={{ background: `var(${s.colorVar})` }} />
-                      {s.id}
-                    </span>
-                    <span>{signed(s.vals[hover])}s</span>
-                  </div>
-                ))}
-              </>
-            )}
-          </div>
+          <line className={`spark-crosshair${hover !== null ? ' show' : ''}`} x1={crosshairX} y1={PAD_T} x2={crosshairX} y2={H - PAD_B} />
+        </svg>
+        <div className={`spark-tooltip${hover !== null ? ' show' : ''}`} style={{ left: tipLeft, top: 6 }}>
+          {hover !== null && (
+            <>
+              <div className="spark-tooltip-head">{minsAgo === 0 ? 'agora' : `há ${minsAgo} min`}</div>
+              {series.map((s) => (
+                <div key={s.id} className="spark-tooltip-row">
+                  <span>
+                    <span className="legend-swatch" style={{ background: `var(${s.colorVar})` }} />
+                    {s.id}
+                  </span>
+                  <span>{signed(s.vals[hover])}s</span>
+                </div>
+              ))}
+            </>
+          )}
         </div>
       </div>
-      <div className="card-foot">
-        Regulador Kp=0.51 Ki=0.017 · ρ modal = 0.708 · fonte: <span className="mono">docs/ESTABILIDADE.md</span>
-      </div>
-    </section>
+    </Card>
   );
 }
