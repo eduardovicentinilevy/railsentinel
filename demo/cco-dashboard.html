@@ -48,6 +48,9 @@
     --s-warn:    #fab219;
     --s-serious: #ec835a;
     --s-crit:    #d03b3b;
+    --warn-ink:  #7a5200; /* texto sobre fundo de aviso: o amarelo de status nao tem contraste no claro */
+    --font-sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
     /* diverging (schedule deviation: early <-> late) */
     --d-early:   #2a78d6;
@@ -85,6 +88,7 @@
       --s-warn:    #fab219;
       --s-serious: #ec835a;
       --s-crit:    #e66767;
+      --warn-ink:  #fab219;
 
       --d-early:   #3987e5;
       --d-late:    #e66767;
@@ -119,6 +123,7 @@
     --s-warn:    #fab219;
     --s-serious: #ec835a;
     --s-crit:    #e66767;
+    --warn-ink:  #fab219;
 
     --d-early:   #3987e5;
     --d-late:    #e66767;
@@ -131,11 +136,11 @@
   body {
     background: var(--bg);
     color: var(--ink);
-    font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-family: var(--font-sans);
     padding-inline: max(16px, env(safe-area-inset-left, 0px));
     padding-block: 0;
   }
-  .mono { font-family: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace; }
+  .mono { font-family: var(--font-mono); }
   h1, h2, h3 { text-wrap: balance; margin: 0; }
   a { color: var(--accent); }
 
@@ -162,14 +167,14 @@
   .brand { display: flex; align-items: center; gap: 10px; }
   .crest { flex: none; display: block; }
   .brand-mark {
-    font-family: "IBM Plex Mono"; font-weight: 700; font-size: 15px;
+    font-family: var(--font-mono); font-weight: 700; font-size: 15px;
     letter-spacing: 0.06em; color: var(--ink);
   }
   .brand-mark span { color: var(--santos-red); }
   .brand-sub { font-size: 12.5px; color: var(--ink-2); }
   .topbar-spacer { flex: 1 1 auto; min-width: 8px; }
   .topbar-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12.5px; color: var(--ink-2); }
-  .clock { font-family: "IBM Plex Mono"; font-size: 13px; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .clock { font-family: var(--font-mono); font-size: 13px; color: var(--ink); font-variant-numeric: tabular-nums; }
 
   .pill {
     display: inline-flex; align-items: center; gap: 6px;
@@ -179,8 +184,7 @@
   .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
   .pill.good     { background: color-mix(in srgb, var(--s-good) 16%, transparent); color: var(--s-good); }
   .pill.good .dot{ background: var(--s-good); box-shadow: 0 0 0 3px color-mix(in srgb, var(--s-good) 22%, transparent); }
-  .pill.warn     { background: color-mix(in srgb, var(--s-warn) 20%, transparent); color: #8a5c00; }
-  :root:not([data-theme="light"]) .pill.warn, [data-theme="dark"] .pill.warn { color: var(--s-warn); }
+  .pill.warn     { background: color-mix(in srgb, var(--s-warn) 20%, transparent); color: var(--warn-ink); }
   .pill.warn .dot{ background: var(--s-warn); }
   .pill.crit     { background: color-mix(in srgb, var(--s-crit) 16%, transparent); color: var(--s-crit); }
   .pill.crit .dot{ background: var(--s-crit); }
@@ -197,7 +201,7 @@
   }
   .kpi-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); font-weight: 600; }
   .kpi-value-row { display: flex; align-items: baseline; gap: 8px; }
-  .kpi-value { font-family: "IBM Plex Mono"; font-size: 28px; font-weight: 600; line-height: 1; letter-spacing: -0.01em; }
+  .kpi-value { font-family: var(--font-mono); font-size: 28px; font-weight: 600; line-height: 1; letter-spacing: -0.01em; }
   .kpi-unit { font-size: 12.5px; color: var(--ink-2); }
   .kpi-delta { font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 3px; }
   .kpi-delta.pos { color: var(--s-good); }
@@ -218,7 +222,7 @@
     border-bottom: 1px solid var(--border); background: var(--surface-2);
   }
   .card-head h2 { font-size: 13px; font-weight: 600; letter-spacing: 0.01em; }
-  .card-head .count { font-family: "IBM Plex Mono"; font-size: 12px; color: var(--muted); }
+  .card-head .count { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
   .card-head-spacer { flex: 1 1 auto; }
   .card-body { padding: 14px 16px; }
   .card-foot { padding: 9px 16px; border-top: 1px solid var(--border); background: var(--surface-2); font-size: 11.5px; color: var(--muted); }
@@ -226,13 +230,13 @@
   /* ---------- line schematic ---------- */
   .schematic-wrap { padding: 6px 4px 2px; }
   .schematic-wrap svg { width: 100%; height: auto; display: block; overflow: visible; }
-  .stop-label { font-size: 10.5px; fill: var(--ink-2); font-family: "IBM Plex Sans", sans-serif; }
+  .stop-label { font-size: 10.5px; fill: var(--ink-2); font-family: var(--font-sans); }
   .stop-dot { fill: var(--muted); }
   .track-line { stroke: var(--border-2); stroke-width: 6; fill: none; stroke-linecap: round; }
   .restr-marker { stroke: var(--s-crit); stroke-width: 6; fill: none; stroke-linecap: round; stroke-dasharray: 1 7; }
   .train-marker { filter: drop-shadow(0 1px 2px rgba(0,0,0,0.25)); }
-  .train-label { font-family: "IBM Plex Mono"; font-size: 10px; font-weight: 600; fill: var(--ink); }
-  .train-dev { font-family: "IBM Plex Mono"; font-size: 9.5px; }
+  .train-label { font-family: var(--font-mono); font-size: 10px; font-weight: 600; fill: var(--ink); }
+  .train-dev { font-family: var(--font-mono); font-size: 9.5px; }
   .legend-row { display: flex; gap: 16px; flex-wrap: wrap; padding: 2px 4px 8px; font-size: 11.5px; color: var(--ink-2); }
   .legend-chip { display: inline-flex; align-items: center; gap: 6px; }
   .legend-swatch { width: 10px; height: 10px; border-radius: 3px; flex: none; }
@@ -252,14 +256,13 @@
     font-size: 10.5px; padding: 2px 7px; border-radius: 999px; border: 1px solid var(--border);
     color: var(--muted); background: var(--surface-2); white-space: nowrap; font-weight: 500;
   }
-  .chip.basic { background: color-mix(in srgb, var(--s-warn) 18%, transparent); color: #8a5c00; border-color: transparent; }
-  :root:not([data-theme="light"]) .chip.basic, [data-theme="dark"] .chip.basic { color: var(--s-warn); }
+  .chip.basic { background: color-mix(in srgb, var(--s-warn) 18%, transparent); color: var(--warn-ink); border-color: transparent; }
   .chip.sil { background: color-mix(in srgb, var(--s-good) 16%, transparent); color: var(--s-good); border-color: transparent; }
-  .chip.mono { font-family: "IBM Plex Mono"; }
+  .chip.mono { font-family: var(--font-mono); }
   .alarm-actions { display: flex; gap: 6px; margin-top: 2px; }
 
   button {
-    font-family: "IBM Plex Sans", sans-serif; font-size: 12px; font-weight: 600;
+    font-family: var(--font-sans); font-size: 12px; font-weight: 600;
     padding: 6px 11px; border-radius: 7px; border: 1px solid var(--border-2);
     background: var(--surface-2); color: var(--ink); cursor: pointer;
   }
@@ -286,7 +289,7 @@
   .status-dot.warn { background: var(--s-warn); }
   .status-dot.crit { background: var(--s-crit); }
   .status-dot.off { background: var(--muted); }
-  .num { font-family: "IBM Plex Mono"; font-variant-numeric: tabular-nums; }
+  .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
   .val-late { color: var(--d-late); }
   .val-early { color: var(--d-early); }
 
@@ -300,7 +303,7 @@
   .ack-form { display: none; gap: 6px; margin-top: 4px; }
   .ack-form.open { display: flex; }
   .ack-form input {
-    flex: 1 1 auto; min-width: 0; font-family: "IBM Plex Mono"; font-size: 12px;
+    flex: 1 1 auto; min-width: 0; font-family: var(--font-mono); font-size: 12px;
     padding: 6px 9px; border-radius: 7px; border: 1px solid var(--border-2); background: var(--surface); color: var(--ink);
   }
   .cleared-note { font-size: 12px; color: var(--s-good); font-weight: 600; display: none; align-items: center; gap: 6px; }
@@ -313,19 +316,19 @@
     width: 34px; height: 34px; border-radius: 9px; flex: none;
     background: color-mix(in srgb, var(--s-good) 16%, transparent);
     display: flex; align-items: center; justify-content: center;
-    color: var(--s-good); font-family: "IBM Plex Mono"; font-weight: 700; font-size: 15px;
+    color: var(--s-good); font-family: var(--font-mono); font-weight: 700; font-size: 15px;
   }
 
   /* ---------- headway sparkline ---------- */
   .spark-card .card-body { padding-top: 10px; }
   .spark-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11.5px; color: var(--ink-2); margin-bottom: 6px; }
   #spark { width: 100%; height: 132px; display: block; overflow: visible; touch-action: none; }
-  .spark-axis-label { font-size: 9.5px; fill: var(--muted); font-family: "IBM Plex Mono"; }
+  .spark-axis-label { font-size: 9.5px; fill: var(--muted); font-family: var(--font-mono); }
   .spark-grid { stroke: var(--border); stroke-width: 1; }
   .spark-zero { stroke: var(--border-2); stroke-width: 1.5; stroke-dasharray: 3 3; }
   .spark-tooltip {
     position: absolute; pointer-events: none; opacity: 0; transition: opacity .1s;
-    background: var(--ink); color: var(--bg); font-family: "IBM Plex Mono"; font-size: 11px;
+    background: var(--ink); color: var(--bg); font-family: var(--font-mono); font-size: 11px;
     padding: 6px 9px; border-radius: 7px; white-space: nowrap; box-shadow: var(--shadow); z-index: 5;
   }
   .spark-tooltip.show { opacity: 1; }
@@ -453,7 +456,7 @@
             <span class="legend-chip"><span class="legend-swatch" style="background:var(--c-blue)"></span>VLT-07</span>
             <span class="legend-chip"><span class="legend-swatch" style="background:var(--c-orange)"></span>VLT-12</span>
             <span class="legend-chip"><span class="legend-swatch" style="background:var(--c-aqua)"></span>VLT-19</span>
-            <span style="margin-left:auto;color:var(--muted)">adiantado <span style="color:var(--d-early)">◀</span> · atrasado <span style="color:var(--d-late)">▶</span></span>
+            <span style="margin-left:auto;color:var(--muted)"><span style="color:var(--d-late)">▲</span> atrasado · <span style="color:var(--d-early)">▼</span> adiantado</span>
           </div>
           <div class="spark-wrap">
             <svg id="spark" viewBox="0 0 900 132" preserveAspectRatio="none"></svg>

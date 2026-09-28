@@ -48,14 +48,23 @@ documentação.
 | `services/ntcip-emulator` | HIL NTCIP 1202 — máquina de estados anel-e-barreira + agente SNMP |
 | `packages/plant` | Modelo de planta da frota, compartilhado entre simulador e banco de estabilidade |
 | `edge/jetson_sim/vision` | Pipeline de inferência: detecção, rastreio, homografia, gabarito |
-| `tests/` | 133 testes — partição de segurança, fronteira, contratos, HIL, estabilidade, visão |
-| `demo/cco-dashboard.html` | Painel do operador com dados mockados — abre direto no navegador, sem stack |
+| `apps/cco-dashboard` | Painel do CCO em React com a identidade do brasão de Santos: alarmes com reconhecimento, liberação de restrição em dois passos, linha simulada, registro do turno (dados mockados) |
+| `tests/` | 194 testes — partição de segurança, fronteira, contratos, HIL, estabilidade, visão, regras do painel (22 exigem PostgreSQL) |
+| `demo/cco-dashboard.html` | Instantâneo estático do painel — abre direto no navegador, sem instalar nada |
 
 ## Início rápido
 
-Sem instalar nada: abra [`demo/cco-dashboard.html`](demo/cco-dashboard.html)
-direto no navegador para ver a forma do painel do operador com dados
-mockados. Para rodar o sistema de verdade:
+Painel do CCO (React, dados mockados, sem precisar da stack):
+
+```bash
+npm install && npm run dashboard   # http://localhost:5173
+```
+
+Detalhes em [`apps/cco-dashboard/README.md`](apps/cco-dashboard/README.md).
+Sem instalar nada, [`demo/cco-dashboard.html`](demo/cco-dashboard.html) abre
+direto no navegador, mas é só um instantâneo estático.
+
+Para rodar o sistema de verdade:
 
 ```bash
 npm install && npm run build && npm run keys

@@ -1,5 +1,11 @@
 # Demo — Painel do Operador (dados mockados)
 
+> A versão principal do painel é o app React em
+> [`apps/cco-dashboard`](../apps/cco-dashboard), com as funções de CCO
+> (reconhecimento de alarmes, liberação de restrição em dois passos, linha
+> simulada, registro do turno). Este arquivo continua existindo para o caso
+> em que não se pode instalar nada: é só um instantâneo estático.
+
 `cco-dashboard.html` é uma página HTML autocontida, sem build nem servidor:
 abra o arquivo direto no navegador.
 

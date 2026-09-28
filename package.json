@@ -17,11 +17,14 @@
     "services/ats-core",
     "services/operator-api",
     "services/ntcip-emulator",
-    "services/historian"
+    "services/historian",
+    "apps/cco-dashboard"
   ],
   "scripts": {
     "build": "tsc --build",
     "clean": "tsc --build --clean",
+    "dashboard": "npm run dev --workspace @railsentinel/cco-dashboard",
+    "dashboard:build": "npm run build --workspace @railsentinel/cco-dashboard",
     "brokers": "node --experimental-strip-types tools/dev-brokers.ts",
     "keys": "node --experimental-strip-types tools/provision-keys.ts",
     "gateway": "node services/ingest-gateway/dist/main.js",
