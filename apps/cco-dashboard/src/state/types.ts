@@ -42,6 +42,8 @@ export type SimRate = 0 | 1 | 10;
 
 export interface CcoState {
   operator: string | null;
+  /** hora em que o operador atual assumiu o posto */
+  operatorSince: string | null;
   trains: TrainState[];
   alarms: AlarmState[];
   restrictions: RestrictionState[];
@@ -59,7 +61,8 @@ export type CcoAction =
   | { type: 'TICK'; dtSec: number; at: string }
   | { type: 'ALARM_ACK'; alarmId: string; at: string }
   | { type: 'ALARM_ACTION'; alarmId: string; label: string; at: string }
-  | { type: 'RESTRICTION_CLEAR'; restrictionId: string; confirmOperator: string; at: string }
+  | { type: 'RESTRICTION_CLEAR'; restrictionId: string; confirmOperator: string; cctvVerified: boolean; at: string }
   | { type: 'RADIO_CALL'; trainId: string; at: string }
+  | { type: 'REGULATION_ADVICE'; trainId: string; at: string }
   | { type: 'SELECT_TRAIN'; trainId: string | null }
   | { type: 'SET_SIM_RATE'; rate: SimRate };

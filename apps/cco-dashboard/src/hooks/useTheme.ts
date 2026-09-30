@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 export type ThemeChoice = 'system' | 'light' | 'dark';
 
@@ -30,6 +30,6 @@ export function useTheme(): [ThemeChoice, () => void] {
     }
   }, [theme]);
 
-  const cycle = () => setTheme((t) => ORDER[(ORDER.indexOf(t) + 1) % ORDER.length]);
+  const cycle = useCallback(() => setTheme((t) => ORDER[(ORDER.indexOf(t) + 1) % ORDER.length]), []);
   return [theme, cycle];
 }

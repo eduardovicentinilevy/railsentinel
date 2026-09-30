@@ -1,6 +1,7 @@
 // Extensões .ts explícitas: este módulo também roda sob `node --experimental-strip-types` nos testes da raiz.
 import { ALARMS, LOG, RESTRICTIONS, SECTIONS, SEED_OPERATOR, TRAINS, TSP } from '../data/mock.ts';
 import { forward, isInside, wrap } from '../domain/line.ts';
+import { regulationAdvice } from '../domain/regulation.ts';
 import type { CcoAction, CcoState, HoldReason, LogEntry, TrainState } from './types.ts';
 
 /** Um loop completo = 3 composições × setpoint de headway de 474 s. */
@@ -32,6 +33,7 @@ export function initialState(now: Date): CcoState {
 
   return {
     operator: SEED_OPERATOR,
+    operatorSince: ago(LOG.find((l) => l.kind === 'session')?.agoSec ?? 0),
     trains: TRAINS.map((t) => ({ ...t, hold: null })),
     alarms: ALARMS.map(({ agoSec, ...a }) => ({ ...a, raisedAt: ago(agoSec), ack: null })),
     restrictions: RESTRICTIONS.map(({ agoSec, ...r }) => {
@@ -138,13 +140,13 @@ export function ccoReducer(state: CcoState, action: CcoAction): CcoState {
     case 'LOGIN': {
       if (state.operator !== null || !isValidOperatorId(action.operator)) return state;
       const operator = normalizeOperatorId(action.operator);
-      return withLog({ ...state, operator }, { at: action.at, kind: 'session', operator, text: `Operador ${operator} assumiu o posto` });
+      return withLog({ ...state, operator, operatorSince: action.at }, { at: action.at, kind: 'session', operator, text: `Operador ${operator} assumiu o posto` });
     }
 
     case 'LOGOUT': {
       if (state.operator === null) return state;
       const operator = state.operator;
-      return withLog({ ...state, operator: null }, { at: action.at, kind: 'session', operator, text: `Operador ${operator} deixou o posto` });
+      return withLog({ ...state, operator: null, operatorSince: null }, { at: action.at, kind: 'session', operator, text: `Operador ${operator} deixou o posto` });
     }
 
     case 'ALARM_ACK': {
@@ -168,9 +170,9 @@ export function ccoReducer(state: CcoState, action: CcoAction): CcoState {
       const operator = state.operator;
       const restriction = state.restrictions.find((r) => r.id === action.restrictionId);
       if (!operator || !restriction || restriction.cleared) return state;
-      // Segunda confirmação: a matrícula digitada precisa ser a do operador
-      // do posto. Uma restrição nunca é liberada por clique único.
-      if (normalizeOperatorId(action.confirmOperator) !== operator) return state;
+      // Confirmação dupla: CFTV verificado e matrícula digitada igual à do
+      // operador do posto. Uma restrição nunca é liberada por clique único.
+      if (!action.cctvVerified || normalizeOperatorId(action.confirmOperator) !== operator) return state;
       return withLog(
         {
           ...state,
@@ -178,7 +180,7 @@ export function ccoReducer(state: CcoState, action: CcoAction): CcoState {
             r === restriction ? { ...r, cleared: { by: operator, at: action.at } } : r,
           ),
         },
-        { at: action.at, kind: 'clear', operator, text: `Restrição ${restriction.id} liberada em ${restriction.sectionId}` },
+        { at: action.at, kind: 'clear', operator, text: `Restrição ${restriction.id} liberada em ${restriction.sectionId} (CFTV verificado)` },
       );
     }
 
@@ -186,6 +188,20 @@ export function ccoReducer(state: CcoState, action: CcoAction): CcoState {
       const operator = state.operator;
       if (!operator || !state.trains.some((t) => t.id === action.trainId)) return state;
       return withLog(state, { at: action.at, kind: 'action', operator, text: `Chamada de rádio ao condutor do ${action.trainId}` });
+    }
+
+    case 'REGULATION_ADVICE': {
+      const operator = state.operator;
+      const train = state.trains.find((t) => t.id === action.trainId);
+      if (!operator || !train) return state;
+      const advice = regulationAdvice(train);
+      if (advice.kind !== 'hold') return state;
+      return withLog(state, {
+        at: action.at,
+        kind: 'action',
+        operator,
+        text: `Aviso de regulação ao ${train.id}: reter ${advice.seconds} s em ${advice.stop}`,
+      });
     }
 
     case 'SELECT_TRAIN':

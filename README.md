@@ -48,13 +48,13 @@ documentação.
 | `services/ntcip-emulator` | HIL NTCIP 1202 — máquina de estados anel-e-barreira + agente SNMP |
 | `packages/plant` | Modelo de planta da frota, compartilhado entre simulador e banco de estabilidade |
 | `edge/jetson_sim/vision` | Pipeline de inferência: detecção, rastreio, homografia, gabarito |
-| `apps/cco-dashboard` | Painel do CCO em React com a identidade do brasão de Santos: alarmes com reconhecimento, liberação de restrição em dois passos, linha simulada, registro do turno (dados mockados) |
-| `tests/` | 194 testes — partição de segurança, fronteira, contratos, HIL, estabilidade, visão, regras do painel (22 exigem PostgreSQL) |
+| `apps/cco-dashboard` | Console do CCO em React com a identidade do brasão de Santos: 7 seções (visão geral, linha, alarmes, TSP, borda, registro, passagem de turno), busca Ctrl+K, liberação de seção com CFTV + matrícula (dados mockados) |
+| `tests/` | 199 testes — partição de segurança, fronteira, contratos, HIL, estabilidade, visão, regras do painel (22 exigem PostgreSQL) |
 | `demo/cco-dashboard.html` | Instantâneo estático do painel — abre direto no navegador, sem instalar nada |
 
 ## Início rápido
 
-Painel do CCO (React, dados mockados, sem precisar da stack):
+Console do CCO (React, dados mockados, sem precisar da stack):
 
 ```bash
 npm install && npm run dashboard   # http://localhost:5173

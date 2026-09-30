@@ -1,15 +1,21 @@
+import type { ReactNode } from 'react';
 import { Card } from './Card';
 import { stamp, useCcoDispatch, useCcoState } from '../state/CcoProvider';
 import { alarmSummary, sortedAlarms } from '../state/selectors';
 
 const SEV_LABEL = { critical: 'CRÍTICO', major: 'MAIOR', warning: 'AVISO' } as const;
 
-export function AlarmsPanel() {
+export type AlarmFilter = 'todos' | 'pendentes' | 'criticos';
+
+export function AlarmsPanel({ filter = 'todos', actions }: { filter?: AlarmFilter; actions?: ReactNode }) {
   const state = useCcoState();
   const dispatch = useCcoDispatch();
   const summary = alarmSummary(state);
   const canOperate = state.operator !== null;
-  const blockedHint = canOperate ? undefined : 'Identifique-se no topo para operar';
+  const blockedHint = canOperate ? undefined : 'Identifique-se no posto para operar';
+  const alarms = sortedAlarms(state).filter(
+    (a) => filter === 'todos' || (filter === 'pendentes' ? a.ack === null : a.sev === 'critical'),
+  );
 
   return (
     <Card
@@ -20,9 +26,11 @@ export function AlarmsPanel() {
           Alarmes de <span className="chip basic">Integridade Básica</span> vêm de visão computacional e não têm autoridade vital.
         </>
       }
+      actions={actions}
       flush
     >
-      {sortedAlarms(state).map((a) => {
+      {alarms.length === 0 && <p className="empty">Nenhum alarme neste filtro.</p>}
+      {alarms.map((a) => {
         const meta = [a.conf && `conf ${a.conf}`, a.model, a.raisedAt].filter(Boolean).join(' · ');
         return (
           <article

@@ -21,9 +21,9 @@ function Laurel() {
  * escudo vermelho com bordadura dourada, ramos de louro e listel. Uso
  * decorativo — identidade do painel, nunca codificação de dado.
  */
-export function Crest({ size = 30 }: { size?: number }) {
+export function Crest({ size = 30, className }: { size?: number; className?: string }) {
   return (
-    <svg className="crest" width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">
+    <svg className={className ? `crest ${className}` : 'crest'} width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">
       <path d="M10 8.6 V3 H12.9 V4.7 H14.6 V3 H17.4 V4.7 H19.1 V3 H22 V8.6 Z" fill="var(--santos-gold)" />
       <Laurel />
       <g transform="translate(32 0) scale(-1 1)">

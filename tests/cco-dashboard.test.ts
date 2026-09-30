@@ -43,6 +43,7 @@ describe('estado inicial', () => {
   test('instantâneo coerente com o cenário do projeto', () => {
     const s = initialState(NOW);
     assert.equal(s.operator, 'OP-4471');
+    assert.equal(s.operatorSince, '14:05:00');
     assert.deepEqual(s.trains.map((t) => t.id), ['VLT-07', 'VLT-12', 'VLT-19']);
     assert.equal(s.restrictions.length, 1);
     assert.equal(s.restrictions[0].id, 'TSR-08fe2b');
@@ -72,11 +73,17 @@ describe('liberação de restrição (confirmação dupla)', () => {
     type: 'RESTRICTION_CLEAR',
     restrictionId: 'TSR-08fe2b',
     confirmOperator,
+    cctvVerified: true,
     at: AT,
   });
 
   test('matrícula diferente da do posto não libera', () => {
     const s = run(initialState(NOW), [clear('OP-9999')]);
+    assert.equal(s.restrictions[0].cleared, null);
+  });
+
+  test('sem a verificação do CFTV não libera, mesmo com a matrícula certa', () => {
+    const s = run(initialState(NOW), [{ ...clear('OP-4471'), cctvVerified: false } as CcoAction]);
     assert.equal(s.restrictions[0].cleared, null);
   });
 
@@ -127,6 +134,31 @@ describe('alarmes', () => {
   });
 });
 
+describe('aviso de regulação (advisory)', () => {
+  const advise = (trainId: string): CcoAction => ({ type: 'REGULATION_ADVICE', trainId, at: AT });
+
+  test('composição adiantada recebe aviso de retenção na próxima parada', () => {
+    const s = run(initialState(NOW), [advise('VLT-12')]);
+    assert.equal(s.log[0].text, 'Aviso de regulação ao VLT-12: reter 40 s em João Pessoa');
+    assert.equal(s.log[0].operator, 'OP-4471');
+  });
+
+  test('composição atrasada nunca é retida', () => {
+    const base = initialState(NOW);
+    assert.equal(run(base, [advise('VLT-07')]), base);
+  });
+
+  test('composição em tabela não recebe aviso', () => {
+    const base = initialState(NOW);
+    assert.equal(run(base, [advise('VLT-19')]), base);
+  });
+
+  test('aviso exige operador no posto', () => {
+    const s = run(initialState(NOW), [{ type: 'LOGOUT', at: AT }, advise('VLT-12')]);
+    assert.equal(s.log.some((e) => e.text.startsWith('Aviso de regulação')), false);
+  });
+});
+
 describe('sessão do posto', () => {
   test('matrícula inválida não assume o posto', () => {
     const s = run(initialState(NOW), [{ type: 'LOGOUT', at: AT }, { type: 'LOGIN', operator: 'x; drop', at: AT }]);
@@ -144,6 +176,7 @@ describe('sessão do posto', () => {
       { type: 'LOGIN', operator: 'op-0001', at: AT },
     ]);
     assert.equal(s.operator, 'OP-0001');
+    assert.equal(s.operatorSince, AT);
     assert.deepEqual(s.log.slice(0, 2).map((e) => e.text), ['Operador OP-0001 assumiu o posto', 'Operador OP-4471 deixou o posto']);
   });
 });
@@ -186,7 +219,7 @@ describe('simulação da linha', () => {
 
   test('após a liberação, a composição retida retoma a marcha e entra na seção', () => {
     let s = ticks(initialState(NOW), 60, 10);
-    s = ccoReducer(s, { type: 'RESTRICTION_CLEAR', restrictionId: 'TSR-08fe2b', confirmOperator: 'OP-4471', at: AT });
+    s = ccoReducer(s, { type: 'RESTRICTION_CLEAR', restrictionId: 'TSR-08fe2b', confirmOperator: 'OP-4471', cctvVerified: true, at: AT });
     s = ticks(s, 5, 10);
     const vlt19 = s.trains.find((t) => t.id === 'VLT-19')!;
     assert.equal(vlt19.hold, null);
@@ -212,8 +245,9 @@ test('reducer é puro: nunca muta o estado anterior', () => {
     run(s0, [
       { type: 'TICK', dtSec: 10, at: AT },
       { type: 'ALARM_ACK', alarmId: 'INC-a91f3c', at: AT },
-      { type: 'RESTRICTION_CLEAR', restrictionId: 'TSR-08fe2b', confirmOperator: 'OP-4471', at: AT },
+      { type: 'RESTRICTION_CLEAR', restrictionId: 'TSR-08fe2b', confirmOperator: 'OP-4471', cctvVerified: true, at: AT },
       { type: 'RADIO_CALL', trainId: 'VLT-07', at: AT },
+      { type: 'REGULATION_ADVICE', trainId: 'VLT-12', at: AT },
       { type: 'SELECT_TRAIN', trainId: 'VLT-12' },
       { type: 'LOGOUT', at: AT },
     ]),
